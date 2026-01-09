@@ -1,47 +1,63 @@
-// src/app/(admin)/layout.tsx
-import Link from "next/link";
-import { LayoutDashboard, Package, ShoppingBag, Users, Settings } from "lucide-react";
+"use client";
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+import Link from "next/link";
+import { LayoutDashboard, Package, ShoppingBag, Users, Settings, LogOut } from "lucide-react";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    // Basic protection: If not loading and no user, kick them out
+    if (!loading && !user) {
+      router.push("/");
+    }
+    // REAL WORLD: You should also check if user.email === "your-admin-email@gmail.com"
+  }, [user, loading, router]);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading Admin...</div>;
+
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-slate-50">
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white hidden md:block">
+      <aside className="w-64 bg-slate-900 text-white hidden md:flex flex-col">
         <div className="p-6">
-          <h1 className="text-2xl font-bold">Store Admin</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Store Admin</h1>
         </div>
-        <nav className="mt-6 px-4 space-y-2">
-          <Link href="/admin/dashboard" className="flex items-center space-x-3 px-4 py-3 bg-slate-800 rounded-lg">
-            <LayoutDashboard className="h-5 w-5" />
-            <span>Dashboard</span>
-          </Link>
-          <Link href="/admin/products" className="flex items-center space-x-3 px-4 py-3 hover:bg-slate-800 rounded-lg transition">
-            <Package className="h-5 w-5" />
-            <span>Products</span>
-          </Link>
-          <Link href="/admin/orders" className="flex items-center space-x-3 px-4 py-3 hover:bg-slate-800 rounded-lg transition">
-            <ShoppingBag className="h-5 w-5" />
-            <span>Orders</span>
-          </Link>
-          <Link href="/admin/users" className="flex items-center space-x-3 px-4 py-3 hover:bg-slate-800 rounded-lg transition">
-            <Users className="h-5 w-5" />
-            <span>Customers</span>
-          </Link>
-          <Link href="/admin/settings" className="flex items-center space-x-3 px-4 py-3 hover:bg-slate-800 rounded-lg transition">
-            <Settings className="h-5 w-5" />
-            <span>Settings</span>
-          </Link>
+        <nav className="flex-1 px-4 space-y-2 mt-4">
+          <NavItem href="/admin/dashboard" icon={<LayoutDashboard />} label="Dashboard" />
+          <NavItem href="/admin/products" icon={<Package />} label="Products" />
+          <NavItem href="/admin/orders" icon={<ShoppingBag />} label="Orders" />
+          <NavItem href="/admin/customers" icon={<Users />} label="Customers" />
+          <NavItem href="/admin/coupons" icon={<Users />} label="coupons" />
+          <NavItem href="/admin/team" icon={<Users />} label="Team & Roles" />
+          <NavItem href="/admin/settings" icon={<Settings />} label="Settings" />
+
         </nav>
+        <div className="p-4 border-t border-slate-800">
+          <button className="flex items-center space-x-3 px-4 py-2 text-slate-400 hover:text-white transition w-full">
+            <LogOut className="h-5 w-5" />
+            <span>Logout</span>
+          </button>
+        </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 bg-slate-50 p-8 overflow-y-auto">
+      {/* Main Content */}
+      <main className="flex-1 p-8 overflow-y-auto h-screen">
         {children}
       </main>
     </div>
+  );
+}
+
+function NavItem({ href, icon, label }: any) {
+  return (
+    <Link href={href} className="flex items-center space-x-3 px-4 py-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition">
+      <span className="h-5 w-5">{icon}</span>
+      <span>{label}</span>
+    </Link>
   );
 }
