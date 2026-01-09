@@ -20,7 +20,7 @@ export type Product = {
     color: string;
     stock: number;
   }[];
-  createdAt: Date;
+  createdAt: string;
 };
 
 export type Order = {
