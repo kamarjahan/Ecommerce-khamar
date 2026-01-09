@@ -1,0 +1,33 @@
+{
+  "name": "my-pro-store",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "firebase": "^12.7.0",
+    "firebase-admin": "^13.6.0",
+    "lucide-react": "^0.562.0",
+    "next": "16.1.1",
+    "razorpay": "^2.9.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-hook-form": "^7.70.0",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.3.5",
+    "zustand": "^5.0.9"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
