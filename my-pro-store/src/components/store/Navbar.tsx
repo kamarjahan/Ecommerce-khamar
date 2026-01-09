@@ -3,13 +3,11 @@ import Link from "next/link";
 import { ShoppingCart, User, Search } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useState } from "react";
+import { useAuth } from "@/components/providers/AuthProvider";
 
 export default function Navbar() {
   const { cart, openLoginModal } = useStore();
-  const [searchQuery, setSearchQuery] = useState("");
-
-  // Mock checking if user is logged in (we will connect Firebase Auth later)
-  const user = null; 
+  const { user } = useAuth(); // <--- Get Real User Statu
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
@@ -35,13 +33,23 @@ export default function Navbar() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-4">
-          {user ? (
-            <Link href="/profile"><User className="h-6 w-6" /></Link>
-          ) : (
-            <button onClick={openLoginModal} className="text-sm font-medium">
-              Login
-            </button>
-          )}
+    {user ? (
+      <Link href="/orders" className="flex items-center gap-2">
+         {/* Show User Avatar or Initials */}
+         {user.photoURL ? (
+            <img src={user.photoURL} alt="User" className="w-8 h-8 rounded-full border" />
+         ) : (
+            <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold">
+               {user.email?.charAt(0).toUpperCase()}
+            </div>
+         )}
+      </Link>
+      
+    ) : (
+      <button onClick={openLoginModal} className="text-sm font-medium">
+        Login
+      </button>
+    )}
 
           <Link href="/cart" className="relative">
             <ShoppingCart className="h-6 w-6" />

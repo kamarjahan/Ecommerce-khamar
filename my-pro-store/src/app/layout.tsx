@@ -1,19 +1,18 @@
 // src/app/layout.tsx
 import LoginModal from "@/components/auth/LoginModal";
+import { AuthProvider } from "@/components/providers/AuthProvider"; // Import this
 import { Toaster } from "sonner";
 import "./globals.css"; // Ensure your CSS is imported
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className="antialiased text-slate-900">
-        {children}
-        <LoginModal /> {/* Global Modal */}
-        <Toaster position="top-center" /> {/* Toast Notifications */}
+        <AuthProvider> {/* <--- Add this Wrapper */}
+          {children}
+          <LoginModal />
+          <Toaster position="top-center" />
+        </AuthProvider>
       </body>
     </html>
   );

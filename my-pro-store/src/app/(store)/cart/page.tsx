@@ -1,27 +1,101 @@
 "use client";
 
+import { useState } from "react"; // Added this
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script";
 import { useStore } from "@/lib/store";
+import { useAuth } from "@/components/providers/AuthProvider"; // Real Auth Hook
 import { Trash2, Plus, Minus, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 export default function CartPage() {
-  const { cart, removeFromCart, updateQuantity, openLoginModal } = useStore();
+  // FIXED: Removed the "..." and listed actual functions
+  const { cart, removeFromCart, updateQuantity, openLoginModal } = useStore(); 
+  const { user } = useAuth(); // Get Real User
+  const [loading, setLoading] = useState(false);
 
   // Calculate Totals
   const subtotal = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
   const shipping = subtotal > 999 ? 0 : 50; 
   const total = subtotal + shipping;
 
-  const handleCheckout = () => {
-    // Mock check for now
-    const isLoggedIn = false; 
-    
-    if (!isLoggedIn) {
+  const handleCheckout = async () => {
+    // 1. Check if user is logged in
+    if (!user) {
+      toast.error("Please login to checkout");
       openLoginModal();
-    } else {
-      toast.success("Proceeding to payment...");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // 2. Call our API to get an Order ID
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cartItems: cart }),
+      });
+      
+      const data = await response.json();
+
+      // 3. Open Razorpay Options
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
+        amount: data.amount,
+        currency: data.currency,
+        name: "My Pro Store",
+        description: "Transaction for Order",
+        order_id: data.orderId,
+        handler: async function (response: any) {
+          toast.success("Payment Successful! Verifying...");
+          await verifyPayment(response, data.orderId);
+        },
+        prefill: {
+          name: user.displayName || "User", // Use real name if available
+          email: user.email || "",
+          contact: "", // You can add phone number field to profile later
+        },
+        theme: {
+          color: "#2563EB",
+        },
+      };
+
+      const rzp1 = new (window as any).Razorpay(options);
+      rzp1.open();
+
+    } catch (error) {
+      toast.error("Checkout failed. Please try again.");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 4. Verification Function
+  const verifyPayment = async (rzpResponse: any, orderId: string) => {
+    try {
+      const res = await fetch("/api/payment/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          razorpay_order_id: rzpResponse.razorpay_order_id,
+          razorpay_payment_id: rzpResponse.razorpay_payment_id,
+          razorpay_signature: rzpResponse.razorpay_signature,
+          cartItems: cart, 
+          userId: user?.uid, // SEND REAL USER ID
+        }),
+      });
+
+      if (res.ok) {
+        toast.success("Order Placed Successfully!");
+        // window.location.href = "/orders"; // Redirect to orders page
+      } else {
+        toast.error("Payment verification failed");
+      }
+    } catch (err) {
+      toast.error("Something went wrong");
     }
   };
 
@@ -45,6 +119,9 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 md:py-12">
+      {/* Script for Razorpay */}
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
+      
       <div className="container px-4 mx-auto">
         <h1 className="text-2xl md:text-3xl font-bold mb-8">Shopping Cart ({cart.length})</h1>
         
@@ -54,12 +131,9 @@ export default function CartPage() {
           <div className="lg:col-span-2 space-y-4">
             {cart.map((item) => (
               <div key={`${item.id}-${item.variant}`} className="bg-white p-4 rounded-xl shadow-sm flex gap-4 md:gap-6">
-                {/* Image */}
                 <div className="relative w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden border">
                   <Image src={item.image} alt={item.name} fill className="object-cover" />
                 </div>
-
-                {/* Details */}
                 <div className="flex-1 flex flex-col justify-between">
                   <div>
                     <div className="flex justify-between items-start">
@@ -75,9 +149,7 @@ export default function CartPage() {
                       <p className="text-sm text-gray-500 mt-1">Variant: {item.variant}</p>
                     )}
                   </div>
-
                   <div className="flex justify-between items-end mt-4">
-                    {/* Quantity Controls */}
                     <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-1 border">
                       <button 
                         onClick={() => updateQuantity(item.id, item.variant, item.quantity - 1)}
@@ -94,8 +166,6 @@ export default function CartPage() {
                         <Plus className="h-4 w-4" />
                       </button>
                     </div>
-
-                    {/* Price */}
                     <div className="text-right">
                       <span className="block font-bold text-lg">₹{(item.price * item.quantity).toLocaleString()}</span>
                       {item.quantity > 1 && (
@@ -112,7 +182,6 @@ export default function CartPage() {
           <div className="lg:col-span-1">
             <div className="bg-white p-6 rounded-xl shadow-sm sticky top-24">
               <h2 className="text-lg font-bold mb-6">Order Summary</h2>
-              
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span>
@@ -120,11 +189,7 @@ export default function CartPage() {
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping</span>
-                  {shipping === 0 ? (
-                    <span className="text-green-600">Free</span>
-                  ) : (
-                    <span>₹{shipping}</span>
-                  )}
+                  {shipping === 0 ? <span className="text-green-600">Free</span> : <span>₹{shipping}</span>}
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Tax (18% GST included)</span>
@@ -138,10 +203,11 @@ export default function CartPage() {
 
               <button 
                 onClick={handleCheckout}
-                className="w-full bg-gray-900 text-white py-3 rounded-lg font-bold mt-8 hover:bg-gray-800 transition flex items-center justify-center gap-2"
+                disabled={loading}
+                className="w-full bg-gray-900 text-white py-3 rounded-lg font-bold mt-8 hover:bg-gray-800 transition flex items-center justify-center gap-2 disabled:bg-gray-400"
               >
-                Proceed to Checkout
-                <ArrowRight className="h-4 w-4" />
+                {loading ? "Processing..." : "Proceed to Checkout"}
+                {!loading && <ArrowRight className="h-4 w-4" />}
               </button>
               
               <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400">
@@ -149,7 +215,6 @@ export default function CartPage() {
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>
