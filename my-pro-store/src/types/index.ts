@@ -21,24 +21,44 @@ export type Product = {
     color: string;
     stock: number;
   }[];
-  createdAt: string; // or Date/Timestamp depending on how you handle it
+  createdAt: string;
 };
 
-export type Review = {
+export type Address = {
+  id?: string;
+  name: string;
+  phone: string;
+  line1: string;
+  city: string;
+  state: string;
+  zip: string;
+};
+
+export type TicketMessage = {
+  id?: string;
+  senderId: string; // 'admin' or userId
+  senderName: string;
+  text: string;
+  createdAt: number;
+};
+
+export type Ticket = {
   id: string;
-  productId: string;
   userId: string;
+  userEmail: string;
   userName: string;
-  rating: number; // 1-5
-  comment: string;
-  createdAt: number; // Storing as ms timestamp for easier serialization
-  verifiedPurchase: boolean;
+  title: string;
+  description: string;
+  status: 'open' | 'closed';
+  createdAt: any;
+  lastMessage?: string;
+  lastMessageAt?: number;
 };
 
 export type Order = {
   id: string;
   userId: string;
-  status: 'pending' | 'placed' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'placed' | 'shipped' | 'delivered' | 'cancelled' | 'cancellation_requested';
   totalAmount: number;
   items: Array<{
     productId: string;
@@ -48,7 +68,7 @@ export type Order = {
     image: string;
     variant?: string;
   }>;
-  shippingAddress: any;
+  shippingAddress: Address;
   payment: any;
   createdAt: any;
 };
