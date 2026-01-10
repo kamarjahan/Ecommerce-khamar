@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Product } from "@/types";
 import { useStore } from "@/lib/store";
-import { ShoppingCart, Heart } from "lucide-react";
+import { ShoppingCart } from "lucide-react"; // Removed Heart icon
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +13,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const { addToCart, openLoginModal } = useStore();
+  const { addToCart } = useStore(); // Removed openLoginModal
 
   // Handle Add to Cart
   const handleAddToCart = (e: React.MouseEvent) => {
@@ -32,34 +32,15 @@ export default function ProductCard({ product }: ProductCardProps) {
     toast.success("Added to Cart");
   };
 
-  // Handle Wishlist (Requires Login)
-  const handleWishlist = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Simulate checking login status. Replace false with actual user check later.
-    const isLoggedIn = false; 
-
-    if (!isLoggedIn) {
-      openLoginModal();
-    } else {
-      toast.success("Added to Wishlist");
-    }
-  };
-
   const discount = Math.round(((product.mrp - product.price) / product.mrp) * 100);
 
   return (
     <Link 
-      href={`/product/${product.slug}`}
+      // Ensure we link to ID if that is how your [id] page is set up
+      href={`/product/${product.id}`} 
       className="group block bg-white rounded-xl border border-gray-100 hover:shadow-lg transition-all duration-300 overflow-hidden relative"
     >
-      {/* Wishlist Button */}
-      <button 
-        onClick={handleWishlist}
-        className="absolute top-3 right-3 z-10 p-2 bg-white/80 backdrop-blur rounded-full text-gray-500 hover:text-red-500 hover:bg-white transition"
-      >
-        <Heart className="h-4 w-4" />
-      </button>
+      {/* Wishlist Button Removed */}
 
       {/* Image Container */}
       <div className="relative aspect-[4/5] w-full bg-gray-50">

@@ -13,7 +13,7 @@ export type Product = {
   inStock: boolean;
   stockCount: number;
   isReturnable: boolean;
-  isCodAvailable?: boolean; // <--- ADDED THIS
+  isCodAvailable?: boolean;
   shippingCostOverride?: number;
   keywords: string[];
   variants?: {
@@ -21,30 +21,34 @@ export type Product = {
     color: string;
     stock: number;
   }[];
-  createdAt: string;
+  createdAt: string; // or Date/Timestamp depending on how you handle it
+};
+
+export type Review = {
+  id: string;
+  productId: string;
+  userId: string;
+  userName: string;
+  rating: number; // 1-5
+  comment: string;
+  createdAt: number; // Storing as ms timestamp for easier serialization
+  verifiedPurchase: boolean;
 };
 
 export type Order = {
   id: string;
   userId: string;
-  status: 'pending' | 'shipped' | 'delivered' | 'cancelled' | 'cancellation_requested';
+  status: 'pending' | 'placed' | 'shipped' | 'delivered' | 'cancelled';
   totalAmount: number;
   items: Array<{
     productId: string;
     name: string;
     quantity: number;
     price: number;
+    image: string;
+    variant?: string;
   }>;
-  shippingAddress: {
-    fullName: string;
-    addressLine: string;
-    city: string;
-    pincode: string;
-    phone: string;
-  };
-  tracking?: {
-    courier: string;
-    id: string;
-  };
-  createdAt: Date;
+  shippingAddress: any;
+  payment: any;
+  createdAt: any;
 };

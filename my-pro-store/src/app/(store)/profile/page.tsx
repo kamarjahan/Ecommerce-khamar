@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { db } from "@/lib/firebase";
-import { collection, query, where, orderBy, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
-import { useStore } from "@/lib/store";
-import { User, Package, MapPin, Heart, Loader2, MessageSquare, AlertCircle, RefreshCw } from "lucide-react";
+import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
+import { useStore } from "@/lib/store"; // Added store import
+import { User, Package, MapPin, Heart, Loader2, MessageSquare, RefreshCw } from "lucide-react"; // Added Heart
 import Image from "next/image";
 import { toast } from "sonner";
+import Link from "next/link";
 
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth();
-  const { wishlist, removeFromWishlist } = useStore();
+  const { wishlist, removeFromWishlist } = useStore(); // Get wishlist from store
   const [activeTab, setActiveTab] = useState("orders");
   const [orders, setOrders] = useState<any[]>([]);
 
@@ -47,7 +48,7 @@ export default function ProfilePage() {
             <div className="space-y-1 text-left">
                {[
                  { id: "orders", icon: Package, label: "My Orders" },
-                 { id: "wishlist", icon: Heart, label: `Wishlist (${wishlist.length})` },
+                 { id: "wishlist", icon: Heart, label: `Wishlist (${wishlist.length})` }, // Restored
                  { id: "addresses", icon: MapPin, label: "Addresses" },
                  { id: "returns", icon: RefreshCw, label: "Returns & Refunds" },
                  { id: "support", icon: MessageSquare, label: "Support Tickets" },
@@ -74,7 +75,7 @@ export default function ProfilePage() {
                         </div>
                         <div className="text-right">
                           <span className="block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase mb-1">{order.status}</span>
-                          <span className="font-bold text-lg">₹{order.totalAmount}</span>
+                          <span className="font-bold text-lg">₹{order.amount?.total || order.totalAmount}</span>
                         </div>
                       </div>
                       <div className="flex gap-4 overflow-x-auto pb-2">
@@ -95,19 +96,32 @@ export default function ProfilePage() {
              </div>
            )}
 
+           {/* Restored Wishlist View */}
            {activeTab === "wishlist" && (
              <div className="space-y-4">
                <h2 className="text-2xl font-bold mb-4">My Wishlist</h2>
-               {wishlist.length === 0 ? <p>Your wishlist is empty.</p> : (
+               {wishlist.length === 0 ? (
+                 <div className="text-center py-10 bg-white rounded-xl border">
+                    <Heart className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-500">Your wishlist is empty.</p>
+                 </div>
+               ) : (
                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                    {wishlist.map(item => (
-                     <div key={item.id} className="bg-white p-4 rounded-xl border relative">
-                        <button onClick={() => removeFromWishlist(item.id)} className="absolute top-2 right-2 text-red-500 bg-white p-1 rounded-full shadow-sm hover:bg-red-50">
+                     <div key={item.id} className="bg-white p-4 rounded-xl border relative group">
+                        <button 
+                          onClick={() => removeFromWishlist(item.id)} 
+                          className="absolute top-2 right-2 z-10 text-red-500 bg-white p-1.5 rounded-full shadow-sm hover:bg-red-50 transition"
+                        >
                           <Heart className="h-4 w-4 fill-current" />
                         </button>
-                        <div className="relative h-32 w-full bg-gray-100 rounded mb-2 overflow-hidden"><Image src={item.image} alt={item.name} fill className="object-cover" /></div>
-                        <h3 className="font-bold text-sm line-clamp-1">{item.name}</h3>
-                        <p className="text-blue-600 font-bold">₹{item.price}</p>
+                        <Link href={`/product/${item.id}`}>
+                            <div className="relative h-40 w-full bg-gray-100 rounded-lg mb-3 overflow-hidden">
+                                <Image src={item.image} alt={item.name} fill className="object-cover group-hover:scale-105 transition" />
+                            </div>
+                            <h3 className="font-bold text-sm line-clamp-1 text-gray-900">{item.name}</h3>
+                            <p className="text-black font-bold mt-1">₹{item.price.toLocaleString()}</p>
+                        </Link>
                      </div>
                    ))}
                  </div>
@@ -137,6 +151,14 @@ export default function ProfilePage() {
                 <RefreshCw className="h-12 w-12 mx-auto text-gray-300 mb-4" />
                 <h3 className="text-lg font-bold text-gray-900">No active returns</h3>
                 <p className="text-gray-500">You have no return requests in progress.</p>
+             </div>
+           )}
+
+           {activeTab === "addresses" && (
+             <div className="text-center py-12 bg-white rounded-xl border">
+                <MapPin className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+                <h3 className="text-lg font-bold text-gray-900">Saved Addresses</h3>
+                <p className="text-gray-500">Addresses will be saved automatically during checkout.</p>
              </div>
            )}
         </div>
