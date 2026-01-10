@@ -4,14 +4,13 @@ import { useState } from "react";
 import Image from "next/image";
 import { Product } from "@/types";
 import { useStore } from "@/lib/store";
-import { Star, ShoppingCart, Heart, Share2, Truck, ShieldCheck } from "lucide-react";
+import { Star, ShoppingCart, Heart, Share2, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export default function ProductView({ product }: { product: Product }) {
   const { addToCart, addToWishlist, wishlist } = useStore();
   
-  // SAFEGUARD: Ensure images exist before accessing [0]
   const [selectedImage, setSelectedImage] = useState(product.images?.[0] || "/placeholder.png");
   const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0] || null);
   const [pincode, setPincode] = useState("");
@@ -31,6 +30,7 @@ export default function ProductView({ product }: { product: Product }) {
       image: selectedImage,
       variant: selectedVariant ? `${selectedVariant.color}-${selectedVariant.size}` : undefined,
       quantity: 1,
+      isCodAvailable: product.isCodAvailable !== false, // <--- PASSING THE FLAG
     });
     toast.success("Added to Cart!");
   };
@@ -78,8 +78,8 @@ export default function ProductView({ product }: { product: Product }) {
 
         <h1 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h1>
         <div className="flex items-center gap-2 mb-6">
-          <div className="flex text-yellow-400"><Star className="h-4 w-4 fill-current" /><Star className="h-4 w-4 fill-current" /><Star className="h-4 w-4 fill-current" /><Star className="h-4 w-4 fill-current" /><Star className="h-4 w-4 fill-current" /></div>
-          <span className="text-sm text-blue-600 font-medium">(12 Verified Reviews)</span>
+           <div className="flex text-yellow-400"><Star className="h-4 w-4 fill-current" /><Star className="h-4 w-4 fill-current" /><Star className="h-4 w-4 fill-current" /><Star className="h-4 w-4 fill-current" /><Star className="h-4 w-4 fill-current" /></div>
+           <span className="text-sm text-blue-600 font-medium">(12 Verified Reviews)</span>
         </div>
 
         <div className="flex items-end gap-3 mb-8 bg-gray-50 p-4 rounded-lg">
@@ -106,6 +106,13 @@ export default function ProductView({ product }: { product: Product }) {
               </div>
             </div>
           </div>
+        )}
+        
+        {/* Availability Info */}
+        {!product.isCodAvailable && (
+           <div className="mb-4 bg-yellow-50 text-yellow-800 p-3 rounded-lg text-sm border border-yellow-200">
+              Cash on Delivery is <b>not available</b> for this item.
+           </div>
         )}
 
         {/* Pincode Checker */}

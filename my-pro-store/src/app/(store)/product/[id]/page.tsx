@@ -2,7 +2,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { notFound } from "next/navigation";
 import { Product } from "@/types";
-import ProductView from "@/components/store/ProductView"; // Import the component we just made
+import ProductView from "@/components/store/ProductView";
 
 // Helper to fetch data
 async function getProduct(id: string) {
@@ -20,16 +20,20 @@ async function getProduct(id: string) {
 }
 
 // The Page Component (Server Side)
-export default async function ProductPage({ params }: { params: { id: string } }) {
-  // 1. Fetch the product using the ID from the URL
-  const product = await getProduct(params.id);
+// FIXED: params is now a Promise in Next.js 15
+export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
+  // 1. Await params to get the ID
+  const { id } = await params;
 
-  // 2. If no product found, show 404 page
+  // 2. Fetch the product using the ID
+  const product = await getProduct(id);
+
+  // 3. If no product found, show 404 page
   if (!product) {
     return notFound();
   }
 
-  // 3. Pass the valid product data to the client view
+  // 4. Pass the valid product data to the client view
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
       <ProductView product={product} />

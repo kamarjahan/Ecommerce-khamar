@@ -10,7 +10,7 @@ export async function POST(req: Request) {
       razorpay_signature,
       cartItems,
       userId,
-      couponCode, // Receive coupon info
+      couponCode, 
       discountAmount
     } = await req.json();
 
@@ -51,9 +51,15 @@ export async function POST(req: Request) {
       createdAt: new Date(),
     };
 
-    await adminDb.collection("orders").add(orderData);
+    // FIXED: Capture the document reference to get the ID
+    const orderRef = await adminDb.collection("orders").add(orderData);
 
-    return NextResponse.json({ success: true, message: "Order Placed" });
+    // FIXED: Return the ID
+    return NextResponse.json({ 
+      success: true, 
+      message: "Order Placed",
+      orderId: orderRef.id 
+    });
 
   } catch (error) {
     console.error("Payment Verification Error:", error);

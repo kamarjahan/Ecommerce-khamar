@@ -2,9 +2,9 @@
 
 export type Product = {
   id: string;
-  sku: string; // Auto-generated code like "NK-RED-001"
+  sku: string;
   name: string;
-  slug: string; // "nike-air-max-red"
+  slug: string;
   description: string;
   price: number;
   mrp: number;
@@ -13,8 +13,9 @@ export type Product = {
   inStock: boolean;
   stockCount: number;
   isReturnable: boolean;
-  shippingCostOverride?: number; // Optional specific shipping cost
-  keywords: string[]; // For search ["nike", "shoes", "red"]
+  isCodAvailable?: boolean; // <--- ADDED THIS
+  shippingCostOverride?: number;
+  keywords: string[];
   variants?: {
     size: string;
     color: string;

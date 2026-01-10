@@ -1,7 +1,5 @@
 import { db } from "@/lib/firebase";
 import { doc, getDoc, collection, getDocs, query, orderBy, limit } from "firebase/firestore";
-import { storage } from "@/lib/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Product } from "@/types";
 
 export const productService = {
@@ -32,15 +30,37 @@ export const productService = {
   }
 };
 
-// Upload Product Image to Firebase Storage
+// Cloudinary Upload Function
 export const uploadProductImage = async (file: File): Promise<string> => {
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !uploadPreset) {
+    throw new Error("Cloudinary credentials missing in .env.local");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", uploadPreset);
+  formData.append("folder", "my-pro-store"); // Optional: organize in a folder
+
   try {
-    const storageRef = ref(storage, `products/${Date.now()}-${file.name}`);
-    const snapshot = await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Cloudinary upload failed");
+    }
+
+    const data = await response.json();
+    return data.secure_url; // Returns the https URL
   } catch (error) {
     console.error("Error uploading image:", error);
-    throw new Error("Failed to upload image");
+    throw error;
   }
 };

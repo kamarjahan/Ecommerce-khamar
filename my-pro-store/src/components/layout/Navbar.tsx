@@ -1,24 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { 
   Search, ShoppingCart, User, Menu, X, LogOut, 
-  LayoutDashboard, Package, Heart 
+  LayoutDashboard, Package 
 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
+import { useStore } from "@/lib/store"; // <--- 1. Import Store
 
 export default function Navbar() {
   const { user, loading } = useAuth();
+  const { cart } = useStore(); // <--- 2. Get Cart
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // <--- 3. Hydration Fix: Only show count after component mounts on client
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const cartCount = mounted ? cart.length : 0;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,13 +72,14 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-6">
             <Link href="/products" className="text-sm font-medium text-gray-700 hover:text-blue-600">Shop</Link>
             
-            {/* Cart */}
+            {/* Cart with Dynamic Badge */}
             <Link href="/cart" className="relative text-gray-700 hover:text-blue-600">
               <ShoppingCart className="h-6 w-6" />
-              {/* Badge (Static for now, connect to CartContext later) */}
-              <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
-                0
-              </span>
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
+                  {cartCount}
+                </span>
+              )}
             </Link>
 
             {/* User Profile / Login */}
@@ -110,14 +121,13 @@ export default function Navbar() {
                       <p className="text-xs text-gray-500 truncate">{user.email}</p>
                     </div>
                     
-                    {/* Admin Link (Only visible if you want to hardcode check or use custom claims) */}
                     <Link href="/admin" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                       <LayoutDashboard className="h-4 w-4" /> Admin Panel
                     </Link>
 
                     <Link href="/profile" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-  <Package className="h-4 w-4" /> My Profile & Orders
-</Link>
+                      <Package className="h-4 w-4" /> My Profile & Orders
+                    </Link>
                     
                     <button 
                       onClick={handleLogout}
@@ -156,13 +166,13 @@ export default function Navbar() {
           </form>
           
           <Link href="/products" className="block font-medium text-gray-900 py-2 border-b">Shop All</Link>
-          <Link href="/cart" className="block font-medium text-gray-900 py-2 border-b">Cart (0)</Link>
+          <Link href="/cart" className="block font-medium text-gray-900 py-2 border-b">Cart ({cartCount})</Link>
           
           {user ? (
             <>
               <Link href="/profile" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-  <Package className="h-4 w-4" /> My Profile & Orders
-</Link>
+                 <Package className="h-4 w-4" /> My Profile & Orders
+              </Link>
               <Link href="/admin" className="block font-medium text-gray-900 py-2">Admin Panel</Link>
               <button onClick={handleLogout} className="block w-full text-left font-medium text-red-600 py-2">Logout</button>
             </>

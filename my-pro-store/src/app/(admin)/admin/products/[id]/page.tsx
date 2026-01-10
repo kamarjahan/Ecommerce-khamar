@@ -1,21 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { useForm } from "react-hook-form";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { uploadProductImage } from "@/lib/services/product-service";
-import { Loader2, X, Save, ArrowLeft, AlertCircle, Plus } from "lucide-react";
+import { Loader2, X, Save, ArrowLeft, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import Image from "next/image";
 import Link from "next/link";
-import { use } from "react"; // Next.js 15 fix for params
+import Image from "next/image"; // Kept for existing cloud images
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
-  const resolvedParams = use(params); // Next.js 15: Unwrap params
+  const resolvedParams = use(params);
   const productId = resolvedParams.id;
 
   const [loading, setLoading] = useState(true);
@@ -62,6 +60,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             category: data.category,
             description: data.description,
             returnPolicy: data.returnPolicy || "returnable",
+            isCodAvailable: data.isCodAvailable !== false, // Default to true if undefined
           });
           setExistingImages(data.images || []);
           setVariants(data.variants || []);
@@ -99,6 +98,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         shippingCost: Number(data.shippingCost),
         category: data.category,
         returnPolicy: data.returnPolicy,
+        isCodAvailable: data.isCodAvailable, // <--- SAVED HERE
         stockCount: Number(data.stockCount),
         images: finalImages,
         variants: variants,
@@ -135,9 +135,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
       <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* LEFT COLUMN */}
         <div className="lg:col-span-2 space-y-6">
-          
+          {/* Main Info */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
              <div className="space-y-4">
                 <div>
@@ -192,10 +191,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                  <div><span className="block text-xs text-gray-500">Profit</span><span className="block font-medium">{profit ? "₹" + profit.toFixed(2) : "-"}</span></div>
                </div>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-4">
-               <div><label className="block text-sm font-medium mb-1">Tax (%)</label><input {...register("taxRate")} type="number" className="w-full border p-2 rounded bg-white text-gray-900" /></div>
-               <div><label className="block text-sm font-medium mb-1">Shipping (₹)</label><input {...register("shippingCost")} type="number" className="w-full border p-2 rounded bg-white text-gray-900" /></div>
-            </div>
           </div>
 
            {/* Variants */}
@@ -215,7 +210,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </div>
         </div>
 
-        {/* RIGHT COLUMN */}
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
              <h3 className="font-semibold mb-4">Organization</h3>
@@ -226,6 +220,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                     <option value="Fabric">Fabric</option>
                     <option value="Cotton">Cotton</option>
                     <option value="Polyester">Polyester</option>
+                    <option value="Fashion">Fashion</option>
+                    <option value="Electronics">Electronics</option>
                   </select>
                 </div>
                 <div><label className="block text-sm font-medium mb-1">SKU</label><input {...register("sku")} className="w-full border p-2 rounded bg-white text-gray-900" /></div>
@@ -235,13 +231,20 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
              <h3 className="font-semibold mb-4">Policies</h3>
-             <div>
-                <label className="block text-sm font-medium mb-1">Return Policy</label>
-                <select {...register("returnPolicy")} className="w-full border p-2 rounded bg-white text-gray-900">
-                  <option value="returnable">Returnable (7 Days)</option>
-                  <option value="replacement">Replacement Only</option>
-                  <option value="no_refund">Not Refundable</option>
-                </select>
+             <div className="space-y-4">
+               <div>
+                  <label className="block text-sm font-medium mb-1">Return Policy</label>
+                  <select {...register("returnPolicy")} className="w-full border p-2 rounded bg-white text-gray-900">
+                    <option value="returnable">Returnable (7 Days)</option>
+                    <option value="replacement">Replacement Only</option>
+                    <option value="no_refund">Not Refundable</option>
+                  </select>
+               </div>
+               {/* COD CHECKBOX */}
+               <div className="flex items-center gap-3 border p-3 rounded-lg bg-gray-50">
+                  <input type="checkbox" {...register("isCodAvailable")} id="cod" className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                  <label htmlFor="cod" className="text-sm font-medium text-gray-700 select-none cursor-pointer">Cash on Delivery Available</label>
+               </div>
              </div>
           </div>
 

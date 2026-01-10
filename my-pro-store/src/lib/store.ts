@@ -8,6 +8,7 @@ export interface CartItem {
   image: string;
   variant?: string;
   quantity: number;
+  isCodAvailable?: boolean; // <--- ADDED THIS
 }
 
 export interface WishlistItem {
