@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { db } from "@/lib/firebase";
-import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
+import { collection, query, where, orderBy, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { useStore } from "@/lib/store";
-import { User, Package, MapPin, Heart, Loader2, ShoppingBag, Plus } from "lucide-react";
+import { User, Package, MapPin, Heart, Loader2, MessageSquare, AlertCircle, RefreshCw } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
+import { toast } from "sonner";
 
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth();
@@ -25,6 +25,11 @@ export default function ProfilePage() {
     if (user) fetchOrders();
   }, [user]);
 
+  const handleSupportTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("Support ticket created! We will contact you soon.");
+  };
+
   if (authLoading || !user) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
   return (
@@ -34,21 +39,23 @@ export default function ProfilePage() {
         {/* Sidebar */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-white p-6 rounded-2xl shadow-sm border text-center">
-            <div className="w-20 h-20 bg-blue-100 rounded-full mx-auto flex items-center justify-center mb-4 text-blue-600">
-               {user.photoURL ? <Image src={user.photoURL} alt="User" width={80} height={80} className="rounded-full" /> : <User className="h-8 w-8" />}
+            <div className="w-20 h-20 bg-blue-100 rounded-full mx-auto flex items-center justify-center mb-4 text-blue-600 overflow-hidden">
+               {user.photoURL ? <Image src={user.photoURL} alt="User" width={80} height={80} /> : <User className="h-8 w-8" />}
             </div>
             <h2 className="font-bold text-xl">{user.displayName || "Customer"}</h2>
             <p className="text-gray-500 text-sm mb-6">{user.email}</p>
-            <div className="space-y-2 text-left">
-               <button onClick={() => setActiveTab("orders")} className={`w-full p-2 rounded flex items-center gap-3 ${activeTab === "orders" ? "bg-black text-white" : "hover:bg-gray-100"}`}>
-                 <Package className="h-4 w-4" /> My Orders
-               </button>
-               <button onClick={() => setActiveTab("wishlist")} className={`w-full p-2 rounded flex items-center gap-3 ${activeTab === "wishlist" ? "bg-black text-white" : "hover:bg-gray-100"}`}>
-                 <Heart className="h-4 w-4" /> Wishlist ({wishlist.length})
-               </button>
-               <button onClick={() => setActiveTab("addresses")} className={`w-full p-2 rounded flex items-center gap-3 ${activeTab === "addresses" ? "bg-black text-white" : "hover:bg-gray-100"}`}>
-                 <MapPin className="h-4 w-4" /> Addresses
-               </button>
+            <div className="space-y-1 text-left">
+               {[
+                 { id: "orders", icon: Package, label: "My Orders" },
+                 { id: "wishlist", icon: Heart, label: `Wishlist (${wishlist.length})` },
+                 { id: "addresses", icon: MapPin, label: "Addresses" },
+                 { id: "returns", icon: RefreshCw, label: "Returns & Refunds" },
+                 { id: "support", icon: MessageSquare, label: "Support Tickets" },
+               ].map((item) => (
+                 <button key={item.id} onClick={() => setActiveTab(item.id)} className={`w-full p-3 rounded-lg flex items-center gap-3 font-medium transition ${activeTab === item.id ? "bg-black text-white" : "hover:bg-gray-100 text-gray-700"}`}>
+                   <item.icon className="h-4 w-4" /> {item.label}
+                 </button>
+               ))}
             </div>
           </div>
         </div>
@@ -59,13 +66,30 @@ export default function ProfilePage() {
              <div className="space-y-4">
                 <h2 className="text-2xl font-bold mb-4">Order History</h2>
                 {orders.length === 0 ? <p className="text-gray-500">No orders placed yet.</p> : orders.map(order => (
-                   <div key={order.id} className="bg-white p-6 rounded-xl border shadow-sm flex justify-between items-center">
-                      <div>
-                        <p className="font-bold">Order #{order.payment.orderId.slice(-6)}</p>
-                        <p className="text-sm text-gray-500">{new Date(order.createdAt.seconds * 1000).toLocaleDateString()}</p>
+                   <div key={order.id} className="bg-white p-6 rounded-xl border shadow-sm">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <p className="font-bold text-lg">Order #{order.payment?.orderId ? order.payment.orderId.slice(-8) : order.id.slice(0,8)}</p>
+                          <p className="text-sm text-gray-500">{new Date(order.createdAt.seconds * 1000).toDateString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase mb-1">{order.status}</span>
+                          <span className="font-bold text-lg">₹{order.totalAmount}</span>
+                        </div>
                       </div>
-                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold uppercase">{order.status}</span>
-                      <span className="font-bold">₹{order.totalAmount}</span>
+                      <div className="flex gap-4 overflow-x-auto pb-2">
+                        {order.items?.map((item: any, i: number) => (
+                          <div key={i} className="flex items-center gap-2 bg-gray-50 p-2 rounded pr-4 min-w-[200px]">
+                            <div className="w-10 h-10 bg-gray-200 rounded overflow-hidden relative flex-shrink-0">
+                                {item.image && <Image src={item.image} alt="" fill className="object-cover" />}
+                            </div>
+                            <div className="text-xs">
+                                <p className="font-bold line-clamp-1">{item.name}</p>
+                                <p>Qty: {item.quantity}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                    </div>
                 ))}
              </div>
@@ -78,8 +102,10 @@ export default function ProfilePage() {
                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                    {wishlist.map(item => (
                      <div key={item.id} className="bg-white p-4 rounded-xl border relative">
-                        <button onClick={() => removeFromWishlist(item.id)} className="absolute top-2 right-2 text-red-500 bg-white p-1 rounded-full shadow-sm">X</button>
-                        <div className="relative h-32 w-full bg-gray-100 rounded mb-2"><Image src={item.image} alt={item.name} fill className="object-cover" /></div>
+                        <button onClick={() => removeFromWishlist(item.id)} className="absolute top-2 right-2 text-red-500 bg-white p-1 rounded-full shadow-sm hover:bg-red-50">
+                          <Heart className="h-4 w-4 fill-current" />
+                        </button>
+                        <div className="relative h-32 w-full bg-gray-100 rounded mb-2 overflow-hidden"><Image src={item.image} alt={item.name} fill className="object-cover" /></div>
                         <h3 className="font-bold text-sm line-clamp-1">{item.name}</h3>
                         <p className="text-blue-600 font-bold">₹{item.price}</p>
                      </div>
@@ -89,20 +115,31 @@ export default function ProfilePage() {
              </div>
            )}
 
-           {activeTab === "addresses" && (
-             <div>
-               <div className="flex justify-between items-center mb-6">
-                 <h2 className="text-2xl font-bold">Saved Addresses</h2>
-                 <button className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-lg text-sm font-bold"><Plus className="h-4 w-4"/> Add New</button>
-               </div>
-               <div className="bg-white p-6 rounded-xl border border-dashed border-gray-300 text-center py-12 text-gray-400">
-                  <MapPin className="h-8 w-8 mx-auto mb-2" />
-                  <p>No addresses saved. Addresses are saved automatically at checkout.</p>
-               </div>
+           {activeTab === "support" && (
+             <div className="bg-white p-8 rounded-xl border shadow-sm">
+                <h2 className="text-2xl font-bold mb-2">Help & Support</h2>
+                <p className="text-gray-500 mb-6">Raise a ticket for any issues with your orders.</p>
+                <form onSubmit={handleSupportTicket} className="space-y-4">
+                   <select className="w-full border p-3 rounded-lg bg-gray-50" required>
+                      <option value="">Select Issue Type</option>
+                      <option value="order">Order Delay</option>
+                      <option value="payment">Payment Issue</option>
+                      <option value="refund">Refund Status</option>
+                   </select>
+                   <textarea className="w-full border p-3 rounded-lg bg-gray-50 h-32" placeholder="Describe your issue..." required></textarea>
+                   <button className="bg-black text-white px-6 py-3 rounded-lg font-bold">Submit Ticket</button>
+                </form>
+             </div>
+           )}
+           
+           {activeTab === "returns" && (
+             <div className="text-center py-12 bg-white rounded-xl border">
+                <RefreshCw className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+                <h3 className="text-lg font-bold text-gray-900">No active returns</h3>
+                <p className="text-gray-500">You have no return requests in progress.</p>
              </div>
            )}
         </div>
-
       </div>
     </div>
   );

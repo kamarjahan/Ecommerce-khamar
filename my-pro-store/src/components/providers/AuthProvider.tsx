@@ -3,39 +3,46 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { Loader2 } from "lucide-react";
+import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  isAdmin: boolean;
 }
 
-const AuthContext = createContext<AuthContextType>({ user: null, loading: true });
+const AuthContext = createContext<AuthContextType>({ user: null, loading: true, isAdmin: false });
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       
-      // CRITICAL: Save User to Firestore DB for Admin Panel
       if (currentUser) {
-        try {
-            const userRef = doc(db, "users", currentUser.uid);
-            await setDoc(userRef, {
-                uid: currentUser.uid,
-                email: currentUser.email,
-                displayName: currentUser.displayName || "Anonymous",
-                photoURL: currentUser.photoURL,
-                isAnonymous: currentUser.isAnonymous,
-                lastLogin: serverTimestamp(),
-            }, { merge: true }); // 'merge' prevents overwriting existing custom fields
-        } catch (error) {
-            console.error("Error saving user to DB:", error);
+        // 1. Sync User to Firestore
+        const userRef = doc(db, "users", currentUser.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            email: currentUser.email,
+            displayName: currentUser.displayName,
+            photoURL: currentUser.photoURL,
+            role: "customer",
+            createdAt: serverTimestamp(),
+          });
+        } else {
+          // Check Admin Role
+          if (userSnap.data().role === "admin") {
+            setIsAdmin(true);
+          }
         }
+      } else {
+        setIsAdmin(false);
       }
       
       setLoading(false);
@@ -45,10 +52,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
-      {!loading && children}
+    <AuthContext.Provider value={{ user, loading, isAdmin }}>
+      {children}
     </AuthContext.Provider>
   );
-}
+};
 
 export const useAuth = () => useContext(AuthContext);

@@ -17,9 +17,9 @@ const firebaseConfig = {
 // Singleton pattern to prevent re-initialization errors in Next.js
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const storage = getStorage(app);
 const provider = new GoogleAuthProvider(); // <--- 2. ADD THIS LINE
 
 export { app, auth, db, storage, provider }; // <--- 3. ADD 'provider' TO EXPORTS

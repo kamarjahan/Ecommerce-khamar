@@ -1,70 +1,46 @@
-// src/lib/services/product-service.ts
-import { db, storage } from "@/lib/firebase";
-import { collection, addDoc, doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Product } from "@/types";
 
-// 1. Upload Image to Firebase Storage
-export async function uploadProductImage(file: File) {
-  const cloudName = "dboikgfsn"; // Replace with your actual Cloud Name
-  const uploadPreset = "ecommerce"; // Replace with your Unsigned Preset Name
-
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", uploadPreset);
-  formData.append("folder", "my-store-products"); // Optional: Organize in folders
-
-  try {
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-      {
-        method: "POST",
-        body: formData,
+export const productService = {
+  // Get Single Product by ID
+  getById: async (id: string): Promise<Product | null> => {
+    try {
+      const docRef = doc(db, "products", id);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        return { id: snap.id, ...snap.data() } as Product;
       }
-    );
-
-    if (!response.ok) {
-      throw new Error("Image upload failed");
+      return null;
+    } catch (error) {
+      console.error("Error fetching product:", error);
+      return null;
     }
+  },
 
-    const data = await response.json();
-    return data.secure_url; // This is the URL you save to Firestore
-  } catch (error) {
-    console.error("Cloudinary Error:", error);
-    throw error;
+  // Get Latest Products
+  getLatest: async (count: number = 8): Promise<Product[]> => {
+    try {
+      const q = query(collection(db, "products"), orderBy("createdAt", "desc"), limit(count));
+      const snap = await getDocs(q);
+      return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    } catch (error) {
+      return [];
+    }
   }
-}
+};
 
-// 2. Add Product to Firestore
-export async function createProduct(data: Partial<Product>) {
+// Upload Product Image to Firebase Storage
+export const uploadProductImage = async (file: File): Promise<string> => {
   try {
-    // Generate a clean slug from the name (e.g., "Nike Shoes" -> "nike-shoes")
-    const slug = data.name!.toLowerCase().replace(/ /g, "-") + "-" + Date.now();
-    
-    // Create the search keywords array automatically
-    const keywords = [
-      ...data.name!.toLowerCase().split(" "),
-      data.category!.toLowerCase(),
-      data.sku!.toLowerCase()
-    ];
-
-    const productData = {
-      ...data,
-      slug,
-      keywords,
-      createdAt: new Date(),
-      inStock: (data.stockCount || 0) > 0,
-    };
-
-    // Add to 'products' collection
-    const docRef = await addDoc(collection(db, "products"), productData);
-    
-    // Update the doc with its own ID
-    await setDoc(doc(db, "products", docRef.id), { id: docRef.id }, { merge: true });
-    
-    return docRef.id;
+    const storageRef = ref(storage, `products/${Date.now()}-${file.name}`);
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    return downloadURL;
   } catch (error) {
-    console.error("Error creating product:", error);
-    throw error;
+    console.error("Error uploading image:", error);
+    throw new Error("Failed to upload image");
   }
-}
+};

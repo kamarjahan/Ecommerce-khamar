@@ -270,7 +270,7 @@ export default function AdminDashboardPage() {
                   />
                   <Tooltip 
                     contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                    formatter={(value: number) => [`₹${value.toLocaleString()}`, "Sales"]}
+                    formatter={(value?: number) => [`₹${value?.toLocaleString() || '0'}`, "Sales"]}
                   />
                   <Area 
                     type="monotone" 
