@@ -9,7 +9,9 @@ import { Loader2, X, Save, ArrowLeft, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
-import Image from "next/image"; // Kept for existing cloud images
+import Image from "next/image";
+
+const CATEGORY_PRESETS = ["Mens", "Womens", "Kids", "Teens"];
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -22,14 +24,17 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [newImages, setNewImages] = useState<File[]>([]);
   const [variants, setVariants] = useState<{size: string, color: string, stock: number}[]>([]);
   
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+
   // Profit Calcs
   const [margin, setMargin] = useState<number | null>(null);
   const [profit, setProfit] = useState<number | null>(null);
 
-  const { register, handleSubmit, reset, watch } = useForm();
+  const { register, handleSubmit, reset, watch, setValue } = useForm();
   
   const sellingPrice = watch("price");
   const costPrice = watch("costPrice");
+  const currentCategory = watch("category");
 
   useEffect(() => {
     if (sellingPrice && costPrice) {
@@ -60,8 +65,16 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             category: data.category,
             description: data.description,
             returnPolicy: data.returnPolicy || "returnable",
-            isCodAvailable: data.isCodAvailable !== false, // Default to true if undefined
+            isCodAvailable: data.isCodAvailable !== false,
           });
+          
+          // Check if category is custom
+          if (data.category && !CATEGORY_PRESETS.includes(data.category)) {
+            setIsCustomCategory(true);
+          } else {
+            setIsCustomCategory(false);
+          }
+
           setExistingImages(data.images || []);
           setVariants(data.variants || []);
         } else {
@@ -77,6 +90,17 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
     fetchData();
   }, [productId, reset, router]);
+
+  const handleCategorySelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === "custom") {
+      setIsCustomCategory(true);
+      setValue("category", ""); // Clear for input
+    } else {
+      setIsCustomCategory(false);
+      setValue("category", val);
+    }
+  };
 
   const onSubmit = async (data: any) => {
     setSaving(true);
@@ -98,15 +122,15 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         shippingCost: Number(data.shippingCost),
         category: data.category,
         returnPolicy: data.returnPolicy,
-        isCodAvailable: data.isCodAvailable, // <--- SAVED HERE
+        isCodAvailable: data.isCodAvailable,
         stockCount: Number(data.stockCount),
         images: finalImages,
         variants: variants,
         keywords: [
           ...data.name.toLowerCase().split(" "),
           data.category.toLowerCase(),
-          data.sku.toLowerCase()
-        ]
+          data.sku ? data.sku.toLowerCase() : ""
+        ].filter(Boolean)
       });
       
       toast.success("Product Updated!");
@@ -214,16 +238,25 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
              <h3 className="font-semibold mb-4">Organization</h3>
              <div className="space-y-4">
+                {/* MODIFIED CATEGORY SECTION */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Category</label>
-                  <select {...register("category")} className="w-full border p-2 rounded bg-white text-gray-900">
-                    <option value="Fabric">Fabric</option>
-                    <option value="Cotton">Cotton</option>
-                    <option value="Polyester">Polyester</option>
-                    <option value="Fashion">Fashion</option>
-                    <option value="Electronics">Electronics</option>
+                  <select 
+                    className="w-full border p-2 rounded bg-white text-gray-900 mb-2"
+                    value={isCustomCategory ? "custom" : (CATEGORY_PRESETS.includes(currentCategory) ? currentCategory : "custom")}
+                    onChange={handleCategorySelect}
+                  >
+                    {CATEGORY_PRESETS.map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="custom">Custom / Other</option>
                   </select>
+                  
+                  <input 
+                    {...register("category")} 
+                    placeholder="Enter Custom Category" 
+                    className={`w-full border p-2 rounded bg-white text-gray-900 ${isCustomCategory ? 'block' : 'hidden'}`} 
+                  />
                 </div>
+
                 <div><label className="block text-sm font-medium mb-1">SKU</label><input {...register("sku")} className="w-full border p-2 rounded bg-white text-gray-900" /></div>
                 <div><label className="block text-sm font-medium mb-1">Stock</label><input {...register("stockCount")} type="number" className="w-full border p-2 rounded bg-white text-gray-900" /></div>
              </div>
@@ -240,7 +273,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                     <option value="no_refund">Not Refundable</option>
                   </select>
                </div>
-               {/* COD CHECKBOX */}
                <div className="flex items-center gap-3 border p-3 rounded-lg bg-gray-50">
                   <input type="checkbox" {...register("isCodAvailable")} id="cod" className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                   <label htmlFor="cod" className="text-sm font-medium text-gray-700 select-none cursor-pointer">Cash on Delivery Available</label>

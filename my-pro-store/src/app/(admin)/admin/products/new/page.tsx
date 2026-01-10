@@ -10,6 +10,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 
+const CATEGORY_PRESETS = ["Mens", "Womens", "Kids", "Teens"];
+
 export default function NewProductPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -17,11 +19,14 @@ export default function NewProductPage() {
   const [previews, setPreviews] = useState<string[]>([]);
   const [variants, setVariants] = useState<{size: string, color: string, stock: number}[]>([]);
   
+  // Custom Category State
+  const [isCustomCategory, setIsCustomCategory] = useState(false);
+  
   // Profit Calcs
   const [margin, setMargin] = useState<number | null>(null);
   const [profit, setProfit] = useState<number | null>(null);
 
-  const { register, handleSubmit, watch } = useForm({
+  const { register, handleSubmit, watch, setValue } = useForm({
     defaultValues: {
       name: "",
       sku: "",
@@ -31,15 +36,16 @@ export default function NewProductPage() {
       costPrice: "",
       taxRate: "18",
       shippingCost: "0",
-      category: "Fabric",
+      category: "Mens", // Default
       returnPolicy: "returnable",
       stockCount: "",
-      isCodAvailable: true // <--- Default to True
+      isCodAvailable: true 
     }
   });
   
   const sellingPrice = watch("price");
   const costPrice = watch("costPrice");
+  const currentCategory = watch("category");
 
   useEffect(() => {
     if (sellingPrice && costPrice) {
@@ -66,10 +72,25 @@ export default function NewProductPage() {
     setPreviews(previews.filter((_, i) => i !== index));
   };
 
+  const handleCategorySelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val === "custom") {
+      setIsCustomCategory(true);
+      setValue("category", ""); // Clear for user input
+    } else {
+      setIsCustomCategory(false);
+      setValue("category", val);
+    }
+  };
+
   const onSubmit = async (data: any) => {
     if (newImages.length === 0) {
       toast.error("Please upload at least one image");
       return;
+    }
+    if (!data.category) {
+        toast.error("Please select or enter a category");
+        return;
     }
 
     setLoading(true);
@@ -95,7 +116,7 @@ export default function NewProductPage() {
         shippingCost: Number(data.shippingCost),
         category: data.category,
         returnPolicy: data.returnPolicy,
-        isCodAvailable: data.isCodAvailable, // <--- SAVED HERE
+        isCodAvailable: data.isCodAvailable,
         stockCount: Number(data.stockCount),
         images: imageUrls,
         variants: variants,
@@ -124,6 +145,7 @@ export default function NewProductPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
+          {/* ... (Product Name, Desc, Media, Pricing blocks same as before) ... */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
              <div className="space-y-4">
                 <div>
@@ -211,18 +233,30 @@ export default function NewProductPage() {
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
              <h3 className="font-semibold mb-4">Organization</h3>
              <div className="space-y-4">
+                {/* MODIFIED CATEGORY SECTION */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Category</label>
-                  <select {...register("category")} className="w-full border p-2 rounded bg-white text-gray-900">
-                    <option value="Fabric">Fabric</option>
-                    <option value="Cotton">Cotton</option>
-                    <option value="Polyester">Polyester</option>
-                    <option value="Fashion">Fashion</option>
-                    <option value="Electronics">Electronics</option>
-                    <option value="Mobiles">Mobiles</option>
-                    <option value="Home">Home</option>
+                  <select 
+                    className="w-full border p-2 rounded bg-white text-gray-900 mb-2"
+                    value={isCustomCategory ? "custom" : (CATEGORY_PRESETS.includes(currentCategory) ? currentCategory : "custom")}
+                    onChange={handleCategorySelect}
+                  >
+                    {CATEGORY_PRESETS.map(c => <option key={c} value={c}>{c}</option>)}
+                    <option value="custom">Custom / Other</option>
                   </select>
+                  
+                  {/* Custom Input: We use display:none logic or conditional rendering. 
+                      Here we rely on react-hook-form to register the input. 
+                      If it's custom, we show this input. If not, we hide it but 
+                      we've already set the value via setValue in handleCategorySelect.
+                  */}
+                  <input 
+                    {...register("category")} 
+                    placeholder="Enter Custom Category" 
+                    className={`w-full border p-2 rounded bg-white text-gray-900 ${isCustomCategory ? 'block' : 'hidden'}`} 
+                  />
                 </div>
+                
                 <div><label className="block text-sm font-medium mb-1">SKU (Optional)</label><input {...register("sku")} placeholder="Auto-generated if empty" className="w-full border p-2 rounded bg-white text-gray-900" /></div>
                 <div><label className="block text-sm font-medium mb-1">Total Stock</label><input {...register("stockCount", { required: true })} type="number" className="w-full border p-2 rounded bg-white text-gray-900" /></div>
              </div>
@@ -239,7 +273,6 @@ export default function NewProductPage() {
                     <option value="no_refund">Not Refundable</option>
                   </select>
                </div>
-               {/* COD CHECKBOX */}
                <div className="flex items-center gap-3 border p-3 rounded-lg bg-gray-50">
                   <input type="checkbox" {...register("isCodAvailable")} id="cod" className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                   <label htmlFor="cod" className="text-sm font-medium text-gray-700 select-none cursor-pointer">Cash on Delivery Available</label>

@@ -1,8 +1,11 @@
 import { db } from "@/lib/firebase";
 import { doc, getDoc, collection, getDocs, query, orderBy, limit } from "firebase/firestore";
-import { storage } from "@/lib/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Product } from "@/types";
+
+// --- CONFIGURATION ---
+// ⚠️ Ensure these are in your .env.local file or replace strictly for testing
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "your-cloud-name";
+const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "your-upload-preset";
 
 export const productService = {
   // Get Single Product by ID
@@ -31,7 +34,7 @@ export const productService = {
     }
   },
 
-  // NEW: Get All Products (for the products page)
+  // Get All Products (for the products page)
   getAll: async (): Promise<Product[]> => {
     try {
       const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
@@ -44,15 +47,33 @@ export const productService = {
   }
 };
 
-// Upload Product Image to Firebase Storage
+// --- UPDATED: CLOUDINARY UPLOAD FUNCTION ---
 export const uploadProductImage = async (file: File): Promise<string> => {
+  if (!CLOUD_NAME || !UPLOAD_PRESET || CLOUD_NAME === "your-cloud-name") {
+    console.error("Cloudinary credentials missing. Check .env.local or product-service.ts");
+    throw new Error("Cloudinary configuration missing");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", UPLOAD_PRESET);
+  formData.append("folder", "ecommerce-products"); // Optional: Folders in Cloudinary
+
   try {
-    const storageRef = ref(storage, `products/${Date.now()}-${file.name}`);
-    const snapshot = await uploadBytes(storageRef, file);
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    return downloadURL;
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Image upload failed");
+    }
+
+    const data = await response.json();
+    return data.secure_url; // Returns the Cloudinary URL
   } catch (error) {
-    console.error("Error uploading image:", error);
-    throw new Error("Failed to upload image");
+    console.error("Error uploading image to Cloudinary:", error);
+    throw error;
   }
 };
