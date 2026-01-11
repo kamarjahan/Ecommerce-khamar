@@ -24,6 +24,19 @@ export type Product = {
   createdAt: string;
 };
 
+// --- ADDED THIS SECTION ---
+export type Review = {
+  id: string;
+  userId: string;
+  userName: string;
+  productId: string;
+  rating: number;
+  comment: string;
+  verifiedPurchase?: boolean;
+  createdAt: number | string;
+};
+// --------------------------
+
 export type Address = {
   id?: string;
   name: string;
