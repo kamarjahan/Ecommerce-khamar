@@ -10,10 +10,10 @@ import { getAuth, GoogleAuthProvider, Auth } from "firebase/auth";
 import { getAnalytics, Analytics, isSupported } from "firebase/analytics";
 
 // --- 1. EDGE RUNTIME POLYFILL ---
-// This fixes the "ReferenceError: navigator is not defined" crash
+// This prevents "navigator is not defined" crashes on Cloudflare/Edge
 if (typeof window === "undefined" && typeof globalThis.navigator === "undefined") {
   (globalThis as any).navigator = {
-    userAgent: "node", // Fakes the user agent so Firestore doesn't think it's Safari
+    userAgent: "node", // Fakes the user agent so Firestore checks pass
   };
 }
 
@@ -26,7 +26,7 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// 2. Initialize App (Singleton)
+// 2. Initialize App (Singleton Pattern)
 let app: FirebaseApp;
 try {
   app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -38,12 +38,12 @@ try {
 // 3. Initialize Firestore (Edge Optimized)
 let db: Firestore;
 try {
-  // Use memory cache to avoid trying to access IndexedDB/LocalStorage on the server
+  // We use memoryLocalCache because Edge Runtime has no IndexedDB/LocalStorage
   db = initializeFirestore(app, {
     localCache: memoryLocalCache(),
   });
 } catch (e) {
-  // Fallback if already initialized
+  // If it was already initialized, we just retrieve the existing instance
   try {
      db = getFirestore(app);
   } catch (err) {
@@ -62,6 +62,7 @@ try {
 }
 
 // 5. Initialize Auth & Analytics SAFELY
+// These are browser-only features, so we wrap them carefully
 let auth: Auth = {} as Auth; 
 let provider: GoogleAuthProvider = new GoogleAuthProvider();
 let analytics: Analytics | null = null;
@@ -70,6 +71,7 @@ if (typeof window !== "undefined" && app.name) {
   try {
     auth = getAuth(app);
     
+    // Only load analytics in the browser
     isSupported().then((yes) => {
       if (yes) analytics = getAnalytics(app);
     });
