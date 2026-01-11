@@ -13,25 +13,48 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// 1. Initialize App
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+// 1. Initialize App (Singleton)
+// We wrap this in a try-catch to prevent the entire site from going down if config is wrong
+let app;
+try {
+  app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+} catch (error) {
+  console.error("Firebase Initialization Error:", error);
+  // Create a dummy app object if initialization fails to keep the site alive
+  app = {} as any; 
+}
 
-// 2. Initialize Firestore & Storage (Safe for Edge)
-const db = getFirestore(app);
-const storage = getStorage(app);
+// 2. Initialize Firestore & Storage (These usually work on Edge)
+let db, storage;
+try {
+   db = getFirestore(app);
+   storage = getStorage(app);
+} catch (e) {
+   console.warn("Firestore/Storage init failed (expected on some edge runtimes):", e);
+   db = {} as any;
+   storage = {} as any;
+}
 
-// 3. Initialize Auth & Analytics ONLY in the Browser (Prevents Edge Crash)
-let auth: any = null;
-let provider: any = null;
+// 3. Initialize Auth & Analytics SAFELY
+// We default to a dummy object on the server to prevent "Cannot read properties of null" errors
+let auth: any = {}; 
+let provider: any = {};
 let analytics: any = null;
 
-if (typeof window !== "undefined") {
-  auth = getAuth(app);
-  provider = new GoogleAuthProvider();
-  
-  isSupported().then((yes) => {
-    if (yes) analytics = getAnalytics(app);
-  });
+if (typeof window !== "undefined" && app.name) {
+  // We are in the Browser -> Initialize real Auth
+  try {
+    auth = getAuth(app);
+    provider = new GoogleAuthProvider();
+    isSupported().then((yes) => {
+      if (yes) analytics = getAnalytics(app);
+    });
+  } catch (e) {
+    console.error("Auth init error:", e);
+  }
+} else {
+  // We are on the Server (Edge) -> Keep 'auth' as an empty object {}
+  // This prevents crashes if a component tries to access 'auth.currentUser'
 }
 
 export { app, db, storage, auth, analytics, provider };
