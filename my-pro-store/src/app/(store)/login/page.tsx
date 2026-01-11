@@ -9,6 +9,8 @@ import { Loader2, Mail, Lock, User, ArrowRight, AlertCircle } from "lucide-react
 import { toast } from "sonner";
 import Image from "next/image";
 
+export const runtime = "edge";
+
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);

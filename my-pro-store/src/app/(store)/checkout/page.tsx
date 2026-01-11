@@ -13,6 +13,8 @@ import {
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 
+export const runtime = "edge";
+
 declare global {
   interface Window {
     Razorpay: any;

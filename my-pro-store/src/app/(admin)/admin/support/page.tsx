@@ -8,6 +8,8 @@ import { MessageSquare, CheckCircle, Send, User, Clock, AlertCircle } from "luci
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+export const runtime = "edge";
+
 export default function AdminSupportPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);

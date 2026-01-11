@@ -10,6 +10,8 @@ import {
 import { toast } from "sonner";
 import Image from "next/image";
 
+export const runtime = "edge";
+
 // --- CLOUDINARY UPLOAD HELPER ---
 // ⚠️ REPLACE WITH YOUR ACTUAL CLOUDINARY DETAILS OR ENV VARIABLES
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "your-cloud-name";

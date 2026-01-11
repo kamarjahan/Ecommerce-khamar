@@ -7,6 +7,8 @@ import { Search, Trash2, Shield, User as UserIcon, Mail, Filter } from "lucide-r
 import { toast } from "sonner";
 import Image from "next/image";
 
+export const runtime = "edge";
+
 export default function AdminCustomersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<any[]>([]);

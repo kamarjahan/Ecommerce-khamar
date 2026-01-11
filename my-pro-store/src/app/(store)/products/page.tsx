@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export const runtime = "edge";
+
 // Filter Categories
 const CATEGORIES = ["All", "Fashion", "Electronics", "Mobiles", "Home", "Beauty"];
 

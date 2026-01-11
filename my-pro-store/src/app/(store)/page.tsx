@@ -7,6 +7,8 @@ import {
   Truck, Shield, Star, CheckCircle, Mail, Lock, ShoppingBag 
 } from "lucide-react";
 
+export const runtime = "edge";
+
 // --- TYPES ---
 interface StoreSettings {
   storeName: string;

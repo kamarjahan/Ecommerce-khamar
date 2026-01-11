@@ -6,6 +6,8 @@ import { collection, getDocs, addDoc, deleteDoc, updateDoc, doc, serverTimestamp
 import { Trash2, Shield, Plus, UserPlus, Mail, Check, X, Pencil, Lock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
+export const runtime = "edge";
+
 // --- PERMISSIONS CONFIG ---
 const ALL_PERMISSIONS = [
   { id: "view_dashboard", label: "View Dashboard" },
