@@ -1,38 +1,29 @@
 import { NextResponse } from "next/server";
-import Razorpay from "razorpay";
-import { adminDb } from "@/lib/firebase-admin";
+import { db } from "@/lib/firebase"; // Use Client SDK (Edge Compatible)
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 export const runtime = "edge";
 
-// REMOVE the top-level initialization
-// const razorpay = new Razorpay({ ... }); <--- DELETE THIS
-
 export async function POST(req: Request) {
   try {
-    // 1. Initialize Razorpay INSIDE the function (Lazy Initialization)
-    if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      throw new Error("Razorpay keys are missing");
-    }
-
-    const razorpay = new Razorpay({
-      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
-    });
-
     const { cartItems, couponCode } = await req.json();
 
-    // ... Rest of your existing code ...
-    // Calculate Base Total
+    // 1. Calculate Base Total
     let totalAmount = 0;
     cartItems.forEach((item: any) => {
       totalAmount += item.price * item.quantity;
     });
 
-    // ... Coupon Logic ...
+    // 2. Coupon Validation (Using Client SDK instead of Admin)
     let discountAmount = 0;
-    if (couponCode && adminDb) { // Check adminDb exists before using
-      const couponsRef = adminDb.collection("coupons");
-      const snapshot = await couponsRef.where("code", "==", couponCode).where("status", "==", "active").get();
+    if (couponCode) {
+      const couponsRef = collection(db, "coupons");
+      const q = query(
+        couponsRef, 
+        where("code", "==", couponCode), 
+        where("status", "==", "active")
+      );
+      const snapshot = await getDocs(q);
 
       if (!snapshot.empty) {
         const coupon = snapshot.docs[0].data();
@@ -44,16 +35,41 @@ export async function POST(req: Request) {
       }
     }
 
-    // ... Final Calculation ...
+    // 3. Final Calculation
     const shipping = totalAmount > 999 ? 0 : 50;
     const finalAmount = Math.max(1, Math.round(totalAmount + shipping - discountAmount));
 
-    // ... Create Razorpay Order ...
-    const order = await razorpay.orders.create({
-      amount: finalAmount * 100,
-      currency: "INR",
-      receipt: `receipt_${Date.now()}`,
+    // 4. Create Razorpay Order using 'fetch' (The 'razorpay' package is not Edge compatible)
+    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      throw new Error("Razorpay keys are missing");
+    }
+
+    // Basic Auth for Razorpay
+    const auth = btoa(`${keyId}:${keySecret}`);
+
+    const razorpayResponse = await fetch("https://api.razorpay.com/v1/orders", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${auth}`,
+      },
+      body: JSON.stringify({
+        amount: finalAmount * 100, // in paisa
+        currency: "INR",
+        receipt: `receipt_${Date.now()}`,
+      }),
     });
+
+    if (!razorpayResponse.ok) {
+        const errorData = await razorpayResponse.json();
+        console.error("Razorpay Error:", errorData);
+        throw new Error("Failed to create Razorpay order");
+    }
+
+    const order = await razorpayResponse.json();
 
     return NextResponse.json({
       orderId: order.id,
