@@ -1,25 +1,34 @@
 import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
-import { adminDb } from "@/lib/firebase-admin"; // FIXED: Changed 'db' to 'adminDb'
+import { adminDb } from "@/lib/firebase-admin";
 
-const razorpay = new Razorpay({
-  key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+// REMOVE the top-level initialization
+// const razorpay = new Razorpay({ ... }); <--- DELETE THIS
 
 export async function POST(req: Request) {
   try {
+    // 1. Initialize Razorpay INSIDE the function (Lazy Initialization)
+    if (!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      throw new Error("Razorpay keys are missing");
+    }
+
+    const razorpay = new Razorpay({
+      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+
     const { cartItems, couponCode } = await req.json();
 
-    // 1. Calculate Base Total
+    // ... Rest of your existing code ...
+    // Calculate Base Total
     let totalAmount = 0;
     cartItems.forEach((item: any) => {
       totalAmount += item.price * item.quantity;
     });
 
-    // 2. Server-Side Coupon Validation
+    // ... Coupon Logic ...
     let discountAmount = 0;
-    if (couponCode) {
+    if (couponCode && adminDb) { // Check adminDb exists before using
       const couponsRef = adminDb.collection("coupons");
       const snapshot = await couponsRef.where("code", "==", couponCode).where("status", "==", "active").get();
 
@@ -33,13 +42,13 @@ export async function POST(req: Request) {
       }
     }
 
-    // 3. Final Calculation
+    // ... Final Calculation ...
     const shipping = totalAmount > 999 ? 0 : 50;
     const finalAmount = Math.max(1, Math.round(totalAmount + shipping - discountAmount));
 
-    // 4. Create Razorpay Order
+    // ... Create Razorpay Order ...
     const order = await razorpay.orders.create({
-      amount: finalAmount * 100, // in paisa
+      amount: finalAmount * 100,
       currency: "INR",
       receipt: `receipt_${Date.now()}`,
     });
