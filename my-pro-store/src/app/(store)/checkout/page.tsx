@@ -177,7 +177,7 @@ export default function CheckoutPage() {
       }
 
       // 2. Razorpay Flow
-      const res = await fetch("/api/checkout", {
+      const res = await fetch("https://my-store-api-beta.vercel.app/api/checkout", {
         method: "POST",
         body: JSON.stringify({ cartItems: cart, couponCode: appliedCoupon?.code }),
       });
@@ -193,7 +193,7 @@ export default function CheckoutPage() {
         description: "Payment for order",
         order_id: data.orderId,
         handler: async function (response: any) {
-          const verifyRes = await fetch("/api/payment/verify", {
+          const verifyRes = await fetch("https://my-store-api-beta.vercel.app/api/payment/verify", {
             method: "POST",
             body: JSON.stringify({
               ...response,
