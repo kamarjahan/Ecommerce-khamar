@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { adminDb } from "@/lib/firebase-admin";
 
+export const runtime = "edge";
+
 // REMOVE the top-level initialization
 // const razorpay = new Razorpay({ ... }); <--- DELETE THIS
 

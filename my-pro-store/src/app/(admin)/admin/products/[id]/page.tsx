@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import Link from "next/link";
 import Image from "next/image";
 
+export const runtime = "edge";
+
 const CATEGORY_PRESETS = ["Mens", "Womens", "Kids", "Teens"];
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {

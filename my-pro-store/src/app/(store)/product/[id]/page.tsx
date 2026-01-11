@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { Product, Review } from "@/types";
 import ProductView from "@/components/store/ProductView";
 
+export const runtime = "edge";
+
 // Helper: Convert Firestore Object to Plain JSON
 const serializeProduct = (doc: any): Product => {
   const data = doc.data();
