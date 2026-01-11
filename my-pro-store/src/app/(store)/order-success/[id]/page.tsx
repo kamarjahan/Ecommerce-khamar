@@ -8,7 +8,7 @@ import Image from "next/image";
 import { CheckCircle, Loader2, ArrowRight, Package } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-export const runtime = "edge";
+ 
 
 export default function OrderSuccessPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params); // Next.js 15: Unwrap params

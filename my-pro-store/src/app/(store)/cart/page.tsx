@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react"; // Added for hydration fix
 
-export const runtime = "edge";
+ 
 
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity } = useStore();

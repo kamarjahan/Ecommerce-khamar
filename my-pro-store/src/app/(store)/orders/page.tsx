@@ -9,7 +9,7 @@ import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from "f
 import { Loader2, Package, Truck, CheckCircle, Clock, XCircle, Star, X } from "lucide-react";
 import { toast } from "sonner";
 
-export const runtime = "edge";
+ 
 
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();

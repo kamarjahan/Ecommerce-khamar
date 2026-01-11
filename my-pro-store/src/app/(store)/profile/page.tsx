@@ -16,7 +16,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Address, Ticket, TicketMessage } from "@/types";
 
-export const runtime = "edge";
+ 
 
 export default function ProfilePage() {
   const { user, loading: authLoading } = useAuth();

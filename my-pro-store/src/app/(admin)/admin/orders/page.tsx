@@ -14,7 +14,7 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-export const runtime = "edge";
+ 
 
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();

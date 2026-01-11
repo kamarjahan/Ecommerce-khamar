@@ -10,7 +10,7 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 
-export const runtime = "edge";
+ 
 
 export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState<any[]>([]);

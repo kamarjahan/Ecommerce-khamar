@@ -16,7 +16,7 @@ import {
   startOfYear, endOfYear, isWithinInterval, format, parseISO, sub 
 } from "date-fns";
 
-export const runtime = "edge";
+ 
 
 // --- COLORS FOR CHARTS ---
 const COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444']; // Green, Blue, Amber, Red
