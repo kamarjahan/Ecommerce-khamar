@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
-import { adminDb } from "@/lib/firebase-admin";
+import { db } from "@/lib/firebase"; // Use Client SDK
+import { collection, addDoc } from "firebase/firestore";
 
 export const runtime = "edge";
 
@@ -16,12 +16,34 @@ export async function POST(req: Request) {
       discountAmount
     } = await req.json();
 
-    // 1. Verify Signature
+    // 1. Verify Signature using Web Crypto API (Edge Compatible)
     const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
-      .update(body.toString())
-      .digest("hex");
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!secret) {
+      throw new Error("Razorpay Secret is missing");
+    }
+
+    const enc = new TextEncoder();
+    const algorithm = { name: "HMAC", hash: "SHA-256" };
+
+    const key = await crypto.subtle.importKey(
+      "raw", 
+      enc.encode(secret), 
+      algorithm, 
+      false, 
+      ["sign", "verify"]
+    );
+
+    const signature = await crypto.subtle.sign(
+      algorithm.name, 
+      key, 
+      enc.encode(body)
+    );
+
+    const expectedSignature = Array.from(new Uint8Array(signature))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
 
     if (expectedSignature !== razorpay_signature) {
       return NextResponse.json({ error: "Invalid Signature" }, { status: 400 });
@@ -32,7 +54,7 @@ export async function POST(req: Request) {
     const shipping = subtotal > 999 ? 0 : 50;
     const totalPaid = subtotal + shipping - (discountAmount || 0);
 
-    // 3. Save Order to Firestore
+    // 3. Save Order to Firestore (Using Client SDK)
     const orderData = {
       userId,
       items: cartItems,
@@ -50,17 +72,16 @@ export async function POST(req: Request) {
         orderId: razorpay_order_id,
         isPaid: true,
       },
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(), // Storing as ISO String for consistency
     };
 
-    // FIXED: Capture the document reference to get the ID
-    const orderRef = await adminDb.collection("orders").add(orderData);
+    const ordersRef = collection(db, "orders");
+    const docRef = await addDoc(ordersRef, orderData);
 
-    // FIXED: Return the ID
     return NextResponse.json({ 
       success: true, 
       message: "Order Placed",
-      orderId: orderRef.id 
+      orderId: docRef.id 
     });
 
   } catch (error) {
