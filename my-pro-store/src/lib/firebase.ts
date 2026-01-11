@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import { getAuth } from "firebase/auth";
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getAnalytics, isSupported } from "firebase/analytics";
 
 const firebaseConfig = {
@@ -13,13 +13,14 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase (Singleton pattern)
+// Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 const storage = getStorage(app);
 const auth = getAuth(app);
+const provider = new GoogleAuthProvider(); // <--- Added this back
 
-// Initialize Analytics ONLY in the browser
+// Initialize Analytics ONLY in the browser (Prevents Edge Crash)
 let analytics;
 if (typeof window !== "undefined") {
   isSupported().then((yes) => {
@@ -29,4 +30,4 @@ if (typeof window !== "undefined") {
   });
 }
 
-export { app, db, storage, auth, analytics };
+export { app, db, storage, auth, analytics, provider };
