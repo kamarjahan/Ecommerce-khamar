@@ -1,25 +1,32 @@
-// src/lib/firebase.ts
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth"; // <--- 1. ADD GoogleAuthProvider HERE
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getAuth } from "firebase/auth";
+import { getAnalytics, isSupported } from "firebase/analytics";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyAwrjuyt7Ae3imQi8mgdR2Ii85SALIEr0g",
-  authDomain: "my-store-21.firebaseapp.com",
-  projectId: "my-store-21",
-  storageBucket: "my-store-21.firebasestorage.app",
-  messagingSenderId: "12492785330",
-  appId: "1:12492785330:web:409863d44586b23bae6bab",
-  measurementId: "G-SPM1C9SH56"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Singleton pattern to prevent re-initialization errors in Next.js
+// Initialize Firebase (Singleton pattern)
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-
-const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
-const provider = new GoogleAuthProvider(); // <--- 2. ADD THIS LINE
+const auth = getAuth(app);
 
-export { app, auth, db, storage, provider }; // <--- 3. ADD 'provider' TO EXPORTS
+// Initialize Analytics ONLY in the browser
+let analytics;
+if (typeof window !== "undefined") {
+  isSupported().then((yes) => {
+    if (yes) {
+      analytics = getAnalytics(app);
+    }
+  });
+}
+
+export { app, db, storage, auth, analytics };
