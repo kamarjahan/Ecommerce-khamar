@@ -13,20 +13,24 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
+// 1. Initialize App
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+// 2. Initialize Firestore & Storage (Safe for Edge)
 const db = getFirestore(app);
 const storage = getStorage(app);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider(); // <--- Added this back
 
-// Initialize Analytics ONLY in the browser (Prevents Edge Crash)
-let analytics;
+// 3. Initialize Auth & Analytics ONLY in the Browser (Prevents Edge Crash)
+let auth: any = null;
+let provider: any = null;
+let analytics: any = null;
+
 if (typeof window !== "undefined") {
+  auth = getAuth(app);
+  provider = new GoogleAuthProvider();
+  
   isSupported().then((yes) => {
-    if (yes) {
-      analytics = getAnalytics(app);
-    }
+    if (yes) analytics = getAnalytics(app);
   });
 }
 
