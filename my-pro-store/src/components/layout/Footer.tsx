@@ -8,7 +8,7 @@ export default function Footer() {
         
         {/* Brand */}
         <div>
-          <h2 className="text-2xl font-bold text-white mb-4">MY<span className="text-blue-500">STORE</span></h2>
+          <h2 className="text-2xl font-bold text-white mb-4">rah<span className="text-blue-500">by rabanda</span></h2>
           <p className="text-sm leading-relaxed mb-6">
             Your one-stop destination for premium fashion and lifestyle products. Quality guaranteed.
           </p>
