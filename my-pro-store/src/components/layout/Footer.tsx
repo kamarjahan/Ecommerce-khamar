@@ -47,22 +47,22 @@ export default function Footer() {
           <ul className="space-y-4 text-sm">
             <li className="flex items-start gap-3">
               <MapPin className="h-5 w-5 text-blue-500 shrink-0" />
-              <span>123 Fashion Street, <br/>New Delhi, India 110001</span>
+              <span>made for rah by rabanda dont use otherwise approval of admin</span>
             </li>
             <li className="flex items-center gap-3">
               <Phone className="h-5 w-5 text-blue-500 shrink-0" />
-              <span>+91 98765 43210</span>
+              <span>+91 6282429338</span>
             </li>
             <li className="flex items-center gap-3">
               <Mail className="h-5 w-5 text-blue-500 shrink-0" />
-              <span>support@mystore.com</span>
+              <span>contact@kamarjahan.in</span>
             </li>
           </ul>
         </div>
       </div>
 
       <div className="border-t border-gray-800 pt-8 text-center text-xs text-gray-500">
-        <p>&copy; {new Date().getFullYear()} MyStore Inc. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} rah by rabanda Inc. All rights reserved.</p>
       </div>
     </footer>
   );
