@@ -51,7 +51,7 @@ export default function Navbar() {
           
           {/* 1. Logo */}
           <Link href="/" className="flex-shrink-0 font-bold text-2xl text-gray-900 tracking-tight">
-            MY<span className="text-blue-600">STORE</span>
+            rah<span className="text-blue-600">by rabanda</span>
           </Link>
 
           {/* 2. Search Bar (Desktop) */}
