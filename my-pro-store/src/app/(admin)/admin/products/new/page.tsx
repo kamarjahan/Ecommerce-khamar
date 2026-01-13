@@ -5,12 +5,11 @@ import { useForm } from "react-hook-form";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { uploadProductImage } from "@/lib/services/product-service";
-import { Loader2, Save, ArrowLeft, X, Upload } from "lucide-react";
+import { Save, ArrowLeft, X, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
-
- 
+import LoadingSpinner from "@/components/ui/LoadingSpinner"; // <--- IMPORT THIS
 
 const CATEGORY_PRESETS = ["Mens", "Womens", "Kids", "Teens"];
 
@@ -97,16 +96,19 @@ export default function NewProductPage() {
 
     setLoading(true);
     try {
+      // Upload Images
       const imageUrls = await Promise.all(
         newImages.map(async (file) => await uploadProductImage(file))
       );
 
+      // Create Keywords for Search
       const keywords = [
         ...data.name.toLowerCase().split(" "),
         data.category.toLowerCase(),
         data.sku ? data.sku.toLowerCase() : ""
       ].filter(k => k);
 
+      // Save to Firestore
       await addDoc(collection(db, "products"), {
         name: data.name,
         sku: data.sku || `SKU-${Date.now()}`,
@@ -131,13 +133,26 @@ export default function NewProductPage() {
     } catch (error) {
       console.error(error);
       toast.error("Failed to create product");
-    } finally {
-      setLoading(false);
+      setLoading(false); // Only stop loading on error (success redirects)
     }
   };
 
   return (
-    <div className="max-w-5xl mx-auto pb-20">
+    <div className="max-w-5xl mx-auto pb-20 relative">
+      
+      {/* --- NEW LOADING OVERLAY --- */}
+      {loading && (
+        <div className="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center">
+           <div className="flex flex-col items-center gap-6">
+              <LoadingSpinner size="xl" />
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-gray-900">Creating Product</h3>
+                <p className="text-sm text-gray-500 mt-1">Uploading images and saving details...</p>
+              </div>
+           </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-4 mb-6">
         <Link href="/admin/products" className="p-2 hover:bg-gray-100 rounded-full">
             <ArrowLeft className="h-5 w-5" />
@@ -147,7 +162,7 @@ export default function NewProductPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          {/* ... (Product Name, Desc, Media, Pricing blocks same as before) ... */}
+          {/* Product Name & Description */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
              <div className="space-y-4">
                 <div>
@@ -161,6 +176,7 @@ export default function NewProductPage() {
              </div>
           </div>
 
+          {/* Media Upload */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <h3 className="font-semibold mb-4">Media</h3>
             <div className="flex gap-4 mb-4 flex-wrap">
@@ -180,6 +196,7 @@ export default function NewProductPage() {
             </div>
           </div>
 
+          {/* Pricing */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <h3 className="font-semibold mb-4">Pricing</h3>
             <div className="grid grid-cols-2 gap-4 mb-4">
@@ -214,6 +231,7 @@ export default function NewProductPage() {
             </div>
           </div>
 
+           {/* Variants */}
            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold">Variants</h3>
@@ -231,11 +249,11 @@ export default function NewProductPage() {
             </div>
         </div>
 
+        {/* Sidebar Controls */}
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
              <h3 className="font-semibold mb-4">Organization</h3>
              <div className="space-y-4">
-                {/* MODIFIED CATEGORY SECTION */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Category</label>
                   <select 
@@ -246,12 +264,6 @@ export default function NewProductPage() {
                     {CATEGORY_PRESETS.map(c => <option key={c} value={c}>{c}</option>)}
                     <option value="custom">Custom / Other</option>
                   </select>
-                  
-                  {/* Custom Input: We use display:none logic or conditional rendering. 
-                      Here we rely on react-hook-form to register the input. 
-                      If it's custom, we show this input. If not, we hide it but 
-                      we've already set the value via setValue in handleCategorySelect.
-                  */}
                   <input 
                     {...register("category")} 
                     placeholder="Enter Custom Category" 
@@ -283,7 +295,8 @@ export default function NewProductPage() {
           </div>
 
           <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition flex justify-center items-center gap-2">
-            {loading ? <Loader2 className="animate-spin" /> : <><Save className="h-5 w-5" /> Create Product</>}
+            <Save className="h-5 w-5" /> 
+            {loading ? "Processing..." : "Create Product"}
           </button>
         </div>
       </form>

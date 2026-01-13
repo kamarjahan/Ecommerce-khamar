@@ -1,19 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, Package, ShoppingBag, Users, Settings, LogOut, MessageSquare, AlertCircle, Tag } from "lucide-react";
+import { 
+  LayoutDashboard, Package, ShoppingBag, Users, Settings, LogOut, 
+  MessageSquare, AlertCircle, Tag, Menu, X 
+} from "lucide-react";
 import { useAuth } from "@/components/providers/AuthProvider";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
+import LoadingSpinner from "@/components/ui/LoadingSpinner"; // <--- IMPORT THIS
 
 // 🔒 SUPER ADMIN EMAIL (Master Key) - Case Insensitive
 const SUPER_ADMIN_EMAIL = "ztenkammu@gmail.com";
 
 // --- PERMISSION MAPPING ---
-// Defines which permission is needed for each route
 const MENU_ITEMS = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "view_dashboard" },
   { href: "/admin/products", label: "Products", icon: Package, permission: "manage_products" },
@@ -35,6 +38,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [checkingPermission, setCheckingPermission] = useState(true);
   const [userPermissions, setUserPermissions] = useState<string[]>([]);
   const [errorMsg, setErrorMsg] = useState("");
+  
+  // Mobile Menu State
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Close mobile menu automatically when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -50,25 +61,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const userEmail = user.email?.toLowerCase() || "";
       const adminEmail = SUPER_ADMIN_EMAIL.toLowerCase();
 
-      // 3. Super Admin Bypass (Always Allow ALL)
+      // 3. Super Admin Bypass
       if (userEmail === adminEmail) {
         setIsAuthorized(true);
-        // Give super admin all permissions
         setUserPermissions(MENU_ITEMS.map(i => i.permission));
         setCheckingPermission(false);
         return;
       }
 
-      // 4. Check 'admin_users' collection for Team Members
+      // 4. Check 'admin_users' collection
       try {
         const q = query(collection(db, "admin_users"), where("email", "==", userEmail));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
           const userData = querySnapshot.docs[0].data();
-          
-          // Use stored permissions OR default to empty
-          // If role is 'admin', give all. Else use specific list.
           const perms = userData.role === 'admin' 
             ? MENU_ITEMS.map(i => i.permission) 
             : (userData.permissions || []);
@@ -90,15 +97,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     checkAccess();
   }, [user, loading, router]);
 
-  // 5. URL Protection: Check if user is on a page they shouldn't be
+  // 5. URL Protection
   useEffect(() => {
     if (!checkingPermission && isAuthorized) {
-      // Find which menu item corresponds to current path
       const currentItem = MENU_ITEMS.find(item => pathname.startsWith(item.href));
-      
-      // If found, check if user has permission
       if (currentItem && !userPermissions.includes(currentItem.permission)) {
-        // Redirect to dashboard (or first available page)
         router.push("/admin/dashboard");
       }
     }
@@ -109,12 +112,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.push("/");
   };
 
-  // --- LOADING STATE ---
+  // --- LOADING STATE (UPDATED) ---
   if (loading || checkingPermission) {
     return (
-      <div className="min-h-screen flex items-center justify-center flex-col gap-4">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
-        <p className="text-sm text-gray-500">Verifying Permissions...</p>
+      <div className="min-h-screen flex items-center justify-center flex-col gap-4 bg-white">
+        {/* NEW LOADING SPINNER */}
+        <LoadingSpinner size="xl" />
+        <p className="text-sm text-gray-400 font-medium animate-pulse">Verifying Access...</p>
       </div>
     );
   }
@@ -147,21 +151,55 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // --- AUTHORIZED LAYOUT ---
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white hidden md:flex flex-col fixed h-full z-10 transition-all">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold tracking-tight">Store Admin</h1>
-          <p className="text-xs text-slate-500 mt-1 line-clamp-1" title={user?.email || ""}>
-            {user?.email}
-          </p>
+    <div className="flex min-h-screen bg-slate-50 relative">
+      
+      {/* 1. MOBILE TOP HEADER */}
+      <div className="md:hidden bg-slate-900 text-white p-4 flex justify-between items-center fixed top-0 left-0 right-0 z-40 shadow-md h-16">
+         <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold tracking-tight">Store Admin</h1>
+         </div>
+         <button 
+           onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
+           className="p-2 hover:bg-slate-800 rounded-lg transition"
+         >
+           {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+         </button>
+      </div>
+
+      {/* 2. MOBILE OVERLAY */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden" 
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* 3. SIDEBAR */}
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col h-full transition-transform duration-300 ease-in-out
+        ${mobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} 
+        md:translate-x-0 md:shadow-none
+      `}>
+        <div className="p-6 h-16 md:h-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight hidden md:block">Store Admin</h1>
+            <span className="md:hidden text-lg font-bold">Menu</span>
+            <p className="text-xs text-slate-500 mt-1 line-clamp-1 hidden md:block" title={user?.email || ""}>
+              {user?.email}
+            </p>
+          </div>
+          
+          <button 
+            className="md:hidden text-slate-400 hover:text-white"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
         
         <nav className="flex-1 px-4 space-y-2 mt-4 overflow-y-auto custom-scrollbar">
           {MENU_ITEMS.map((item) => {
-            // ONLY RENDER IF USER HAS PERMISSION
             if (!userPermissions.includes(item.permission)) return null;
-
             return (
               <NavItem 
                 key={item.href} 
@@ -185,8 +223,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-8 md:ml-64 bg-slate-50 min-h-screen transition-all">
+      {/* 4. MAIN CONTENT */}
+      <main className="flex-1 p-4 md:p-8 md:ml-64 bg-slate-50 min-h-screen transition-all pt-20 md:pt-8">
         {children}
       </main>
     </div>

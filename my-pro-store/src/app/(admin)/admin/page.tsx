@@ -16,6 +16,7 @@ import {
   startOfYear, endOfYear, isWithinInterval, format, parseISO, sub 
 } from "date-fns";
 
+import LoadingSpinner from "@/components/ui/LoadingSpinner"; // Import this
  
 
 // --- COLORS FOR CHARTS ---
@@ -40,30 +41,50 @@ export default function AdminDashboardPage() {
 
   // 1. Fetch All Data Once
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
-        const snapshot = await getDocs(q);
+  const fetchData = async () => {
+    try {
+      const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      
+      const data = snapshot.docs.map(doc => {
+        const d = doc.data();
         
-        // Process dates immediately
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          date: doc.data().createdAt?.toDate() || new Date(),
-          amount: doc.data().totalAmount || 0,
-          items: doc.data().items || []
-        }));
-        
-        setAllOrders(data);
-        setLoading(false);
-      } catch (error) {
-        console.error("Error loading data:", error);
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
+        // --- SAFE DATE PARSING START ---
+        let date = new Date();
+        if (d.createdAt) {
+          // Case A: It's a real Firestore Timestamp (has .toDate)
+          if (typeof d.createdAt.toDate === 'function') {
+            date = d.createdAt.toDate();
+          }
+          // Case B: It's a serialized Timestamp object (has seconds but no methods)
+          else if (d.createdAt.seconds) {
+            date = new Date(d.createdAt.seconds * 1000);
+          }
+          // Case C: It's a Date string or raw number
+          else {
+            date = new Date(d.createdAt);
+          }
+        }
+        // --- SAFE DATE PARSING END ---
 
+        return {
+          id: doc.id,
+          ...d,
+          date: date,
+          amount: d.totalAmount || 0,
+          items: d.items || []
+        };
+      });
+      
+      setAllOrders(data);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      setLoading(false);
+    }
+  };
+  fetchData();
+}, []);
   // 2. Process Data when Filter Changes
   useEffect(() => {
     if (loading || allOrders.length === 0) return;
@@ -217,9 +238,9 @@ export default function AdminDashboardPage() {
   if (loading) {
     return (
       <div className="flex h-[80vh] w-full items-center justify-center">
-         <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
-            <p className="text-sm text-gray-500 font-medium">Loading analytics...</p>
+         <div className="flex flex-col items-center gap-4">
+            <LoadingSpinner size="lg" />
+            <p className="text-sm text-gray-500 font-medium animate-pulse">Crunching the numbers...</p>
          </div>
       </div>
     );
@@ -287,17 +308,18 @@ export default function AdminDashboardPage() {
 
       {/* 3. Main Analytics Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-           <div className="flex justify-between items-center mb-6">
+  {/* Add min-w-0 to the className below */}
+  <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-100 shadow-sm min-w-0">
+     <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="font-bold text-gray-900">Sales Analytics</h3>
                 <p className="text-xs text-gray-500">Revenue and order volume over time</p>
               </div>
            </div>
            
-           <div className="h-[350px] w-full">
-              {graphData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
+           <div className="w-full" style={{ height: 350 }}>
+  {graphData.length > 0 ? (
+    <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={graphData}>
                     <defs>
                       <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
@@ -352,11 +374,11 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* 4. Order Status Breakdown */}
-        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-           <h3 className="font-bold text-gray-900 mb-2">Order Status</h3>
+        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm min-w-0">
+     <h3 className="font-bold text-gray-900 mb-2">Order Status</h3>
            <p className="text-xs text-gray-500 mb-6">Distribution of current orders</p>
            
-           <div className="h-[250px] w-full relative">
+           <div className="w-full relative" style={{ height: 250 }}>
              {statusData.length > 0 ? (
                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>

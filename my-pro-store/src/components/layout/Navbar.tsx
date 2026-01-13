@@ -148,7 +148,7 @@ export default function Navbar() {
              {/* Shop Link */}
              <Link href="/products" onClick={closeMenus} className="text-gray-700 p-1">
              <ShoppingBag className="h-6 w-6" /> {/* <--- Updated Icon */}
-                <Store className="h-6 w-6" />
+                
              </Link>
 
              {/* Cart Link */}
