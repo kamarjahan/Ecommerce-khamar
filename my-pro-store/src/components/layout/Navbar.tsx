@@ -8,7 +8,7 @@ import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
 import { 
   Search, ShoppingCart, User, Menu, X, LogOut, 
-  LayoutDashboard, Package, Store 
+  LayoutDashboard, Package, Store, ShoppingBag
 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -65,7 +65,7 @@ export default function Navbar() {
           
           {/* 1. Logo */}
           <Link href="/" onClick={closeMenus} className="flex-shrink-0 font-bold text-2xl text-gray-900 tracking-tight">
-            rah<span className="text-blue-600">by rabanda</span>
+            rah<span className="text-blue-600"> by rabanda</span>
           </Link>
 
           {/* 2. Desktop Search Bar (Hidden on Mobile) */}
@@ -147,6 +147,7 @@ export default function Navbar() {
 
              {/* Shop Link */}
              <Link href="/products" onClick={closeMenus} className="text-gray-700 p-1">
+             <ShoppingBag className="h-6 w-6" /> {/* <--- Updated Icon */}
                 <Store className="h-6 w-6" />
              </Link>
 

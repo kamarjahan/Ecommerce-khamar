@@ -189,7 +189,7 @@ export default function CheckoutPage() {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: data.amount,
         currency: "INR",
-        name: "My Pro Store",
+        name: "Rah By Rabanda",
         description: "Payment for order",
         order_id: data.orderId,
         handler: async function (response: any) {

@@ -10,7 +10,7 @@ import Footer from "@/components/layout/Footer";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "My Pro Store",
+  title: "Rah By Rabanda",
   description: "Best E-commerce Store",
 };
 

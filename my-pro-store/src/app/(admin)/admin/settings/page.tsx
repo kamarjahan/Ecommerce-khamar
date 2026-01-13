@@ -41,7 +41,7 @@ export default function AdminSettingsPage() {
   // Comprehensive Config State
   const [config, setConfig] = useState({
     // 1. General & SEO
-    storeName: "My Pro Store",
+    storeName: "Rah By Rabanda",
     storeDescription: "The best place to buy amazing products.",
     currency: "INR",
     maintenanceMode: false,
