@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Product } from "@/types";
 import { useStore } from "@/lib/store";
-import { ShoppingCart } from "lucide-react"; // Removed Heart icon
+import { ShoppingCart } from "lucide-react"; 
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -13,14 +13,18 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const { addToCart } = useStore(); // Removed openLoginModal
+  const { addToCart } = useStore(); 
+
+  // FIX: Calculate availability based on stockCount number
+  // (Since 'inStock' boolean might be missing or false in DB)
+  const hasStock = (product.stockCount || 0) > 0;
 
   // Handle Add to Cart
   const handleAddToCart = (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent navigating to product page
+    e.preventDefault(); 
     e.stopPropagation();
 
-    if (!product.inStock) return;
+    if (!hasStock) return;
 
     addToCart({
       id: product.id,
@@ -36,12 +40,9 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   return (
     <Link 
-      // Ensure we link to ID if that is how your [id] page is set up
       href={`/product/${product.id}`} 
       className="group block bg-white rounded-xl border border-gray-100 hover:shadow-lg transition-all duration-300 overflow-hidden relative"
     >
-      {/* Wishlist Button Removed */}
-
       {/* Image Container */}
       <div className="relative aspect-[4/5] w-full bg-gray-50">
         <Image
@@ -51,7 +52,9 @@ export default function ProductCard({ product }: ProductCardProps) {
           className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
-        {!product.inStock && (
+        
+        {/* FIX: Use hasStock here */}
+        {!hasStock && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
             <span className="bg-red-600 text-white px-3 py-1 text-xs font-bold rounded">OUT OF STOCK</span>
           </div>
@@ -77,16 +80,16 @@ export default function ProductCard({ product }: ProductCardProps) {
         {/* Add to Cart Button */}
         <button
           onClick={handleAddToCart}
-          disabled={!product.inStock}
+          disabled={!hasStock}
           className={cn(
             "mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-colors",
-            product.inStock 
+            hasStock 
               ? "bg-gray-900 text-white hover:bg-gray-800" 
               : "bg-gray-200 text-gray-400 cursor-not-allowed"
           )}
         >
           <ShoppingCart className="h-4 w-4" />
-          {product.inStock ? "Add to Cart" : "Out of Stock"}
+          {hasStock ? "Add to Cart" : "Out of Stock"}
         </button>
       </div>
     </Link>

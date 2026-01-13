@@ -1,101 +1,64 @@
-import { db } from "@/lib/firebase";
-import { doc, getDoc, collection, query, where, limit, getDocs } from "firebase/firestore";
-import { notFound } from "next/navigation";
-import { Product, Review } from "@/types";
+"use client";
+
+import { use, useEffect, useState, Suspense } from "react";
+import { productService } from "@/lib/services/product-service";
+import { Product } from "@/types";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import ProductView from "@/components/store/ProductView";
+import RelatedProducts from "@/components/store/RelatedProducts"; // Import the new component
 
- 
+export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter();
+  const resolvedParams = use(params);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
-// Helper: Convert Firestore Object to Plain JSON
-const serializeProduct = (doc: any): Product => {
-  const data = doc.data();
-  return {
-    id: doc.id,
-    ...data,
-    // Convert Firestore Timestamp to String
-    createdAt: data.createdAt?.toDate?.().toISOString() || new Date().toISOString(),
-    // Ensure variants are safe
-    variants: data.variants || [],
-    images: data.images || []
-  } as Product;
-};
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // 1. Fetch Main Product
+        const data = await productService.getById(resolvedParams.id);
+        if (!data) {
+          router.push("/404");
+          return;
+        }
+        setProduct(data);
 
-// 1. Fetch Main Product
-async function getProduct(id: string) {
-  try {
-    const docRef = doc(db, "products", id);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      return serializeProduct(snap);
-    }
-    return null;
-  } catch (error) {
-    return null;
-  }
-}
+        // 2. Fetch Related Products (using the category we just got)
+        if (data.category) {
+            const related = await productService.getRelated(data.category, data.id);
+            setRelatedProducts(related);
+        }
 
-// 2. Fetch Similar Products
-async function getSimilarProducts(category: string, currentId: string) {
-  try {
-    const q = query(
-      collection(db, "products"), 
-      where("category", "==", category), 
-      limit(5)
+      } catch (error) {
+        console.error("Failed to load product", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [resolvedParams.id, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-900" />
+      </div>
     );
-    const snap = await getDocs(q);
-    
-    return snap.docs
-      .map(doc => serializeProduct(doc))
-      .filter(p => p.id !== currentId)
-      .slice(0, 4);
-  } catch (error) {
-    console.error("Error fetching similar:", error);
-    return [];
-  }
-}
-
-// 3. Fetch Reviews
-async function getReviews(productId: string) {
-  try {
-    const q = query(collection(db, "reviews"), where("productId", "==", productId));
-    const snap = await getDocs(q);
-    
-    // Reviews might also have Timestamps, so we handle them safely
-    return snap.docs.map(doc => {
-      const data = doc.data();
-      return { 
-        id: doc.id, 
-        ...data,
-        // Handle createdAt if it's a Timestamp or Number
-        createdAt: typeof data.createdAt === 'object' ? data.createdAt.toMillis() : data.createdAt 
-      } as Review;
-    });
-  } catch (error) {
-    return [];
-  }
-}
-
-export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = await params;
-  const product = await getProduct(resolvedParams.id);
-
-  if (!product) {
-    return notFound();
   }
 
-  // Parallel Fetching
-  const [similarProducts, reviews] = await Promise.all([
-    getSimilarProducts(product.category, product.id),
-    getReviews(product.id)
-  ]);
+  if (!product) return null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
-      <ProductView 
-        product={product} 
-        similarProducts={similarProducts} 
-        reviews={reviews} 
-      />
+    <div className="max-w-7xl mx-auto px-4 py-8 md:py-12">
+       <Suspense fallback={<div>Loading view...</div>}>
+          <ProductView product={product} />
+       </Suspense>
+       
+       {/* New Related Products Section */}
+       <RelatedProducts products={relatedProducts} />
     </div>
   );
 }

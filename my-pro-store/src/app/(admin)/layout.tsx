@@ -11,7 +11,6 @@ import { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import LoadingSpinner from "@/components/ui/LoadingSpinner"; // <--- IMPORT THIS
 
 // 🔒 SUPER ADMIN EMAIL (Master Key) - Case Insensitive
 const SUPER_ADMIN_EMAIL = "ztenkammu@gmail.com";
@@ -112,13 +111,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.push("/");
   };
 
-  // --- LOADING STATE (UPDATED) ---
+  // --- LOADING STATE ---
   if (loading || checkingPermission) {
     return (
-      <div className="min-h-screen flex items-center justify-center flex-col gap-4 bg-white">
-        {/* NEW LOADING SPINNER */}
-        <LoadingSpinner size="xl" />
-        <p className="text-sm text-gray-400 font-medium animate-pulse">Verifying Access...</p>
+      <div className="min-h-screen flex items-center justify-center flex-col gap-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-gray-900"></div>
+        <p className="text-sm text-gray-500">Verifying Permissions...</p>
       </div>
     );
   }
@@ -153,11 +151,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="flex min-h-screen bg-slate-50 relative">
       
-      {/* 1. MOBILE TOP HEADER */}
+      {/* 1. MOBILE TOP HEADER (Visible only on mobile) */}
       <div className="md:hidden bg-slate-900 text-white p-4 flex justify-between items-center fixed top-0 left-0 right-0 z-40 shadow-md h-16">
          <div className="flex items-center gap-2">
             <h1 className="text-lg font-bold tracking-tight">Store Admin</h1>
          </div>
+         {/* Hamburger / Close Button */}
          <button 
            onClick={() => setMobileMenuOpen(!mobileMenuOpen)} 
            className="p-2 hover:bg-slate-800 rounded-lg transition"
@@ -166,7 +165,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
          </button>
       </div>
 
-      {/* 2. MOBILE OVERLAY */}
+      {/* 2. MOBILE OVERLAY (Dark background when menu is open) */}
       {mobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden" 
@@ -174,7 +173,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         />
       )}
 
-      {/* 3. SIDEBAR */}
+      {/* 3. RESPONSIVE SIDEBAR */}
+      {/* - Mobile: Fixed position, slides in from left (-translate-x-full to translate-x-0)
+         - Desktop: Always visible (translate-x-0), relative positioning handled by flex container
+      */}
       <aside className={`
         fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col h-full transition-transform duration-300 ease-in-out
         ${mobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} 
@@ -189,6 +191,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </p>
           </div>
           
+          {/* Close button inside drawer for mobile */}
           <button 
             className="md:hidden text-slate-400 hover:text-white"
             onClick={() => setMobileMenuOpen(false)}
@@ -224,6 +227,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* 4. MAIN CONTENT */}
+      {/* Added pt-20 on mobile to account for the fixed header */}
       <main className="flex-1 p-4 md:p-8 md:ml-64 bg-slate-50 min-h-screen transition-all pt-20 md:pt-8">
         {children}
       </main>

@@ -1,9 +1,8 @@
 import { db } from "@/lib/firebase";
-import { doc, getDoc, collection, getDocs, query, orderBy, limit } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs, query, orderBy, limit, where } from "firebase/firestore"; // Added 'where'
 import { Product } from "@/types";
 
 // --- CONFIGURATION ---
-// ⚠️ Ensure these are in your .env.local file or replace strictly for testing
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || "your-cloud-name";
 const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || "your-upload-preset";
 
@@ -34,7 +33,7 @@ export const productService = {
     }
   },
 
-  // Get All Products (for the products page)
+  // Get All Products
   getAll: async (): Promise<Product[]> => {
     try {
       const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
@@ -44,10 +43,31 @@ export const productService = {
       console.error("Error fetching all products:", error);
       return [];
     }
+  },
+
+  // NEW: Get Related Products
+  getRelated: async (category: string, currentId: string): Promise<Product[]> => {
+    try {
+      // Query 5 products from same category to ensure we have enough after filtering current one
+      const q = query(
+        collection(db, "products"), 
+        where("category", "==", category),
+        limit(5)
+      );
+      const snap = await getDocs(q);
+      
+      // Filter out the current product from the list
+      return snap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Product))
+        .filter(p => p.id !== currentId)
+        .slice(0, 4); // Return max 4
+    } catch (error) {
+      console.error("Error fetching related products:", error);
+      return [];
+    }
   }
 };
 
-// --- UPDATED: CLOUDINARY UPLOAD FUNCTION ---
 export const uploadProductImage = async (file: File): Promise<string> => {
   if (!CLOUD_NAME || !UPLOAD_PRESET || CLOUD_NAME === "your-cloud-name") {
     console.error("Cloudinary credentials missing. Check .env.local or product-service.ts");
@@ -57,7 +77,7 @@ export const uploadProductImage = async (file: File): Promise<string> => {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", UPLOAD_PRESET);
-  formData.append("folder", "ecommerce-products"); // Optional: Folders in Cloudinary
+  formData.append("folder", "ecommerce-products");
 
   try {
     const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
@@ -71,7 +91,7 @@ export const uploadProductImage = async (file: File): Promise<string> => {
     }
 
     const data = await response.json();
-    return data.secure_url; // Returns the Cloudinary URL
+    return data.secure_url;
   } catch (error) {
     console.error("Error uploading image to Cloudinary:", error);
     throw error;

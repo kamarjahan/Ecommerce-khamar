@@ -11,8 +11,6 @@ import { toast } from "sonner";
 import Link from "next/link";
 import Image from "next/image";
 
- 
-
 const CATEGORY_PRESETS = ["Mens", "Womens", "Kids", "Teens"];
 
 export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
@@ -37,6 +35,8 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const sellingPrice = watch("price");
   const costPrice = watch("costPrice");
   const currentCategory = watch("category");
+  // Watch shipping toggle
+  const isShippingEnabled = watch("isShippingEnabled");
 
   useEffect(() => {
     if (sellingPrice && costPrice) {
@@ -62,7 +62,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             mrp: data.mrp,
             costPrice: data.costPrice || 0,
             taxRate: data.taxRate || 18,
+            // Logic: If shippingCost > 0, enable toggle
+            isShippingEnabled: (data.shippingCost || 0) > 0,
             shippingCost: data.shippingCost || 0,
+            
             stockCount: data.stockCount,
             category: data.category,
             description: data.description,
@@ -70,7 +73,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             isCodAvailable: data.isCodAvailable !== false,
           });
           
-          // Check if category is custom
           if (data.category && !CATEGORY_PRESETS.includes(data.category)) {
             setIsCustomCategory(true);
           } else {
@@ -97,7 +99,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     const val = e.target.value;
     if (val === "custom") {
       setIsCustomCategory(true);
-      setValue("category", ""); // Clear for input
+      setValue("category", ""); 
     } else {
       setIsCustomCategory(false);
       setValue("category", val);
@@ -112,6 +114,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       );
 
       const finalImages = [...existingImages, ...newImageUrls];
+      
+      // Logic: If disabled, save 0
+      const finalShippingCost = data.isShippingEnabled ? Number(data.shippingCost) : 0;
 
       await updateDoc(doc(db, "products", productId), {
         name: data.name,
@@ -121,7 +126,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         mrp: Number(data.mrp),
         costPrice: Number(data.costPrice),
         taxRate: Number(data.taxRate),
-        shippingCost: Number(data.shippingCost),
+        shippingCost: finalShippingCost, // Save processed cost
         category: data.category,
         returnPolicy: data.returnPolicy,
         isCodAvailable: data.isCodAvailable,
@@ -194,7 +199,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          {/* Pricing */}
+          {/* Pricing & Shipping */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <h3 className="font-semibold mb-4">Pricing</h3>
             <div className="grid grid-cols-2 gap-4 mb-4">
@@ -216,6 +221,32 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                  <div><span className="block text-xs text-gray-500">Margin</span><span className="block font-medium">{margin ? margin.toFixed(1) + "%" : "-"}</span></div>
                  <div><span className="block text-xs text-gray-500">Profit</span><span className="block font-medium">{profit ? "₹" + profit.toFixed(2) : "-"}</span></div>
                </div>
+            </div>
+
+            {/* --- NEW SHIPPING SECTION --- */}
+            <div className="mt-6 border-t pt-4">
+                <div className="flex items-center justify-between mb-2">
+                    <label htmlFor="shipping-toggle" className="font-medium text-gray-900 cursor-pointer select-none">Charge Shipping?</label>
+                    <input 
+                        type="checkbox" 
+                        id="shipping-toggle"
+                        {...register("isShippingEnabled")} 
+                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                </div>
+                
+                {isShippingEnabled && (
+                    <div className="mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <label className="block text-sm font-medium mb-1 text-gray-700">Shipping Fee (₹)</label>
+                        <input 
+                            {...register("shippingCost")} 
+                            type="number" 
+                            placeholder="e.g. 50"
+                            className="w-full border p-2 rounded bg-white text-gray-900" 
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Leave as 0 for free shipping if enabled (or just disable it).</p>
+                    </div>
+                )}
             </div>
           </div>
 
@@ -240,7 +271,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
              <h3 className="font-semibold mb-4">Organization</h3>
              <div className="space-y-4">
-                {/* MODIFIED CATEGORY SECTION */}
                 <div>
                   <label className="block text-sm font-medium mb-1">Category</label>
                   <select 

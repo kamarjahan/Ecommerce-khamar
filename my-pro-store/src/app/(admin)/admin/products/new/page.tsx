@@ -5,11 +5,10 @@ import { useForm } from "react-hook-form";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { uploadProductImage } from "@/lib/services/product-service";
-import { Save, ArrowLeft, X, Upload } from "lucide-react";
+import { Loader2, Save, ArrowLeft, X, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
-import LoadingSpinner from "@/components/ui/LoadingSpinner"; // <--- IMPORT THIS
 
 const CATEGORY_PRESETS = ["Mens", "Womens", "Kids", "Teens"];
 
@@ -36,17 +35,21 @@ export default function NewProductPage() {
       mrp: "",
       costPrice: "",
       taxRate: "18",
-      shippingCost: "0",
       category: "Mens", // Default
       returnPolicy: "returnable",
       stockCount: "",
-      isCodAvailable: true 
+      isCodAvailable: true,
+      // Shipping defaults
+      isShippingEnabled: false,
+      shippingCost: "0" 
     }
   });
   
   const sellingPrice = watch("price");
   const costPrice = watch("costPrice");
   const currentCategory = watch("category");
+  // Watch shipping toggle
+  const isShippingEnabled = watch("isShippingEnabled");
 
   useEffect(() => {
     if (sellingPrice && costPrice) {
@@ -96,19 +99,19 @@ export default function NewProductPage() {
 
     setLoading(true);
     try {
-      // Upload Images
       const imageUrls = await Promise.all(
         newImages.map(async (file) => await uploadProductImage(file))
       );
 
-      // Create Keywords for Search
       const keywords = [
         ...data.name.toLowerCase().split(" "),
         data.category.toLowerCase(),
         data.sku ? data.sku.toLowerCase() : ""
       ].filter(k => k);
 
-      // Save to Firestore
+      // Handle Shipping Logic
+      const finalShippingCost = data.isShippingEnabled ? Number(data.shippingCost) : 0;
+
       await addDoc(collection(db, "products"), {
         name: data.name,
         sku: data.sku || `SKU-${Date.now()}`,
@@ -117,7 +120,7 @@ export default function NewProductPage() {
         mrp: Number(data.mrp),
         costPrice: Number(data.costPrice),
         taxRate: Number(data.taxRate),
-        shippingCost: Number(data.shippingCost),
+        shippingCost: finalShippingCost, // Save processed cost
         category: data.category,
         returnPolicy: data.returnPolicy,
         isCodAvailable: data.isCodAvailable,
@@ -133,26 +136,13 @@ export default function NewProductPage() {
     } catch (error) {
       console.error(error);
       toast.error("Failed to create product");
-      setLoading(false); // Only stop loading on error (success redirects)
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-5xl mx-auto pb-20 relative">
-      
-      {/* --- NEW LOADING OVERLAY --- */}
-      {loading && (
-        <div className="fixed inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center">
-           <div className="flex flex-col items-center gap-6">
-              <LoadingSpinner size="xl" />
-              <div className="text-center">
-                <h3 className="text-xl font-bold text-gray-900">Creating Product</h3>
-                <p className="text-sm text-gray-500 mt-1">Uploading images and saving details...</p>
-              </div>
-           </div>
-        </div>
-      )}
-
+    <div className="max-w-5xl mx-auto pb-20">
       <div className="flex items-center gap-4 mb-6">
         <Link href="/admin/products" className="p-2 hover:bg-gray-100 rounded-full">
             <ArrowLeft className="h-5 w-5" />
@@ -162,7 +152,7 @@ export default function NewProductPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          {/* Product Name & Description */}
+          {/* Name & Desc */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
              <div className="space-y-4">
                 <div>
@@ -176,7 +166,7 @@ export default function NewProductPage() {
              </div>
           </div>
 
-          {/* Media Upload */}
+          {/* Media */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <h3 className="font-semibold mb-4">Media</h3>
             <div className="flex gap-4 mb-4 flex-wrap">
@@ -196,7 +186,7 @@ export default function NewProductPage() {
             </div>
           </div>
 
-          {/* Pricing */}
+          {/* Pricing & Shipping */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <h3 className="font-semibold mb-4">Pricing</h3>
             <div className="grid grid-cols-2 gap-4 mb-4">
@@ -229,6 +219,33 @@ export default function NewProductPage() {
                  </div>
                </div>
             </div>
+
+            {/* --- NEW SHIPPING SECTION --- */}
+            <div className="mt-6 border-t pt-4">
+                <div className="flex items-center justify-between mb-2">
+                    <label htmlFor="shipping-toggle" className="font-medium text-gray-900 cursor-pointer select-none">Charge Shipping?</label>
+                    <input 
+                        type="checkbox" 
+                        id="shipping-toggle"
+                        {...register("isShippingEnabled")} 
+                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                </div>
+                
+                {/* Show Input if Enabled */}
+                {isShippingEnabled && (
+                    <div className="mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <label className="block text-sm font-medium mb-1 text-gray-700">Shipping Fee (₹)</label>
+                        <input 
+                            {...register("shippingCost")} 
+                            type="number" 
+                            placeholder="e.g. 50"
+                            className="w-full border p-2 rounded bg-white text-gray-900" 
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Leave as 0 for free shipping if enabled (or just disable it).</p>
+                    </div>
+                )}
+            </div>
           </div>
 
            {/* Variants */}
@@ -249,7 +266,6 @@ export default function NewProductPage() {
             </div>
         </div>
 
-        {/* Sidebar Controls */}
         <div className="space-y-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
              <h3 className="font-semibold mb-4">Organization</h3>
@@ -295,8 +311,7 @@ export default function NewProductPage() {
           </div>
 
           <button type="submit" disabled={loading} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition flex justify-center items-center gap-2">
-            <Save className="h-5 w-5" /> 
-            {loading ? "Processing..." : "Create Product"}
+            {loading ? <Loader2 className="animate-spin" /> : <><Save className="h-5 w-5" /> Create Product</>}
           </button>
         </div>
       </form>
