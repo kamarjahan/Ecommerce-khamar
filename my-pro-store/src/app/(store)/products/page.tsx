@@ -11,8 +11,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
- 
-
 // Filter Categories
 const CATEGORIES = ["All", "Fashion", "Electronics", "Mobiles", "Home", "Beauty"];
 
@@ -27,23 +25,57 @@ function ProductsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // State
+  // 1. Derived State from URL (Source of Truth)
+  const categoryParam = searchParams.get("category") || "All";
+  const sortParam = searchParams.get("sort") || "newest";
+  const searchParam = searchParams.get("search") || "";
+
+  // 2. Local State
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-
-  // Filter States
-  const [search, setSearch] = useState(searchParams.get("search") || "");
-  const [category, setCategory] = useState(searchParams.get("category") || "All");
-  const [sort, setSort] = useState(searchParams.get("sort") || "newest");
+  
+  // Search Input State (Local for typing responsiveness)
+  const [searchTerm, setSearchTerm] = useState(searchParam);
+  
+  // Additional Filters (Not typically in URL but can be)
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
   const [showOnSaleOnly, setShowOnSaleOnly] = useState(false);
 
-  // 1. Fetch Products
+  // 3. Sync URL changes to Local Search State (e.g. Back Button)
+  useEffect(() => {
+    setSearchTerm(searchParam);
+  }, [searchParam]);
+
+  // 4. Debounce Search Update to URL
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      // Only update URL if the search term has actually changed
+      if (searchTerm !== searchParam) {
+        updateURL("search", searchTerm);
+      }
+    }, 400); // 400ms delay
+
+    return () => clearTimeout(timer);
+  }, [searchTerm, searchParam]);
+
+  // Helper to update URL params
+  const updateURL = (key: string, value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    
+    if (value && value !== "All" && value !== "") {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    
+    router.replace(`/products?${params.toString()}`, { scroll: false });
+  };
+
+  // 5. Fetch Products
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
-      // Ensure productService.getAll exists (see step 2 below if missing)
       const data = await productService.getAll();
       setProducts(data);
       setLoading(false);
@@ -51,13 +83,13 @@ function ProductsContent() {
     fetchProducts();
   }, []);
 
-  // 2. Filter & Sort Logic
+  // 6. Filter & Sort Logic
   const filteredProducts = useMemo(() => {
     let result = [...products];
 
-    // Search
-    if (search) {
-      const q = search.toLowerCase();
+    // Search (Use local searchTerm for immediate UI feedback)
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
       result = result.filter(p => 
         p.name.toLowerCase().includes(q) || 
         p.category.toLowerCase().includes(q) ||
@@ -66,8 +98,8 @@ function ProductsContent() {
     }
 
     // Category
-    if (category !== "All") {
-      result = result.filter(p => p.category.toLowerCase() === category.toLowerCase());
+    if (categoryParam !== "All") {
+      result = result.filter(p => p.category.toLowerCase() === categoryParam.toLowerCase());
     }
 
     // Price Range
@@ -79,7 +111,7 @@ function ProductsContent() {
     }
 
     // Sorting
-    switch (sort) {
+    switch (sortParam) {
       case "price_asc":
         result.sort((a, b) => a.price - b.price);
         break;
@@ -88,28 +120,43 @@ function ProductsContent() {
         break;
       case "discount":
         result.sort((a, b) => {
-          const discA = ((a.mrp - a.price) / a.mrp);
-          const discB = ((b.mrp - b.price) / b.mrp);
+          const discA = a.mrp ? ((a.mrp - a.price) / a.mrp) : 0;
+          const discB = b.mrp ? ((b.mrp - b.price) / b.mrp) : 0;
           return discB - discA;
         });
         break;
       case "newest":
       default:
-        // Sort by createdAt (string comparison works for ISO dates)
-        result.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+        // Safely handle dates (String or Firestore Timestamp)
+        result.sort((a, b) => {
+          const dateA = new Date(
+            (typeof a.createdAt === 'object' && 'toDate' in (a.createdAt as any)) 
+              ? (a.createdAt as any).toDate() 
+              : a.createdAt || 0
+          ).getTime();
+          
+          const dateB = new Date(
+            (typeof b.createdAt === 'object' && 'toDate' in (b.createdAt as any)) 
+              ? (b.createdAt as any).toDate() 
+              : b.createdAt || 0
+          ).getTime();
+
+          return dateB - dateA;
+        });
     }
 
     return result;
-  }, [products, search, category, sort, priceRange, showOnSaleOnly]);
+  }, [products, searchTerm, categoryParam, sortParam, priceRange, showOnSaleOnly]);
 
-  // Sync URL
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (search) params.set("search", search);
-    if (category !== "All") params.set("category", category);
-    if (sort !== "newest") params.set("sort", sort);
-    router.replace(`/products?${params.toString()}`, { scroll: false });
-  }, [search, category, sort, router]);
+  // Handlers
+  const handleCategoryChange = (cat: string) => updateURL("category", cat);
+  const handleSortChange = (val: string) => updateURL("sort", val);
+  const clearAll = () => {
+    setSearchTerm("");
+    updateURL("search", "");
+    updateURL("category", "All");
+    updateURL("sort", "newest");
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -125,8 +172,8 @@ function ProductsContent() {
                   type="text" 
                   placeholder="Search products..." 
                   className="w-full bg-gray-100 border-none rounded-lg pl-9 pr-4 py-2 focus:ring-2 focus:ring-black transition"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
              </div>
              <button 
@@ -148,8 +195,14 @@ function ProductsContent() {
               <div className="space-y-2">
                 {CATEGORIES.map(cat => (
                   <label key={cat} className="flex items-center gap-2 cursor-pointer group">
-                     <input type="radio" name="category" className="accent-black" checked={category === cat} onChange={() => setCategory(cat)} />
-                     <span className={cn("text-sm transition", category === cat ? "font-bold text-black" : "text-gray-600")}>{cat}</span>
+                     <input 
+                       type="radio" 
+                       name="category" 
+                       className="accent-black" 
+                       checked={categoryParam === cat} 
+                       onChange={() => handleCategoryChange(cat)} 
+                     />
+                     <span className={cn("text-sm transition", categoryParam === cat ? "font-bold text-black" : "text-gray-600")}>{cat}</span>
                   </label>
                 ))}
               </div>
@@ -187,19 +240,25 @@ function ProductsContent() {
                         <div className="space-y-2">
                             {CATEGORIES.map(cat => (
                             <label key={cat} className="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" name="mobile_cat" className="accent-black" checked={category === cat} onChange={() => setCategory(cat)} />
-                                <span className={category === cat ? "font-bold" : "text-gray-600"}>{cat}</span>
+                                <input 
+                                  type="radio" 
+                                  name="mobile_cat" 
+                                  className="accent-black" 
+                                  checked={categoryParam === cat} 
+                                  onChange={() => handleCategoryChange(cat)} 
+                                />
+                                <span className={categoryParam === cat ? "font-bold" : "text-gray-600"}>{cat}</span>
                             </label>
                             ))}
                         </div>
                     </div>
                     <div>
                         <h3 className="font-bold mb-4">Sort By</h3>
-                        <select value={sort} onChange={(e) => setSort(e.target.value)} className="w-full border p-2 rounded-lg">
+                        <select value={sortParam} onChange={(e) => handleSortChange(e.target.value)} className="w-full border p-2 rounded-lg">
                             {SORT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                         </select>
                     </div>
-                    <button onClick={() => {setCategory("All"); setSearch(""); setSort("newest"); setShowFilters(false);}} className="w-full border border-black py-3 rounded-lg font-bold mt-8">Clear All</button>
+                    <button onClick={() => { clearAll(); setShowFilters(false); }} className="w-full border border-black py-3 rounded-lg font-bold mt-8">Clear All</button>
                  </div>
               </div>
            </div>
@@ -212,7 +271,7 @@ function ProductsContent() {
               <div className="hidden md:flex items-center gap-2">
                  <span className="text-sm text-gray-500">Sort by:</span>
                  <div className="relative">
-                    <select value={sort} onChange={(e) => setSort(e.target.value)} className="appearance-none bg-white border rounded-lg pl-4 pr-8 py-2 text-sm font-medium focus:ring-2 focus:ring-black cursor-pointer">
+                    <select value={sortParam} onChange={(e) => handleSortChange(e.target.value)} className="appearance-none bg-white border rounded-lg pl-4 pr-8 py-2 text-sm font-medium focus:ring-2 focus:ring-black cursor-pointer">
                         {SORT_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                     </select>
                     <ArrowUpDown className="absolute right-2 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
@@ -235,7 +294,7 @@ function ProductsContent() {
                 <Tag className="h-12 w-12 mx-auto text-gray-300 mb-3" />
                 <h3 className="text-lg font-bold text-gray-900">No products found</h3>
                 <p className="text-gray-500 mb-6">Try adjusting your filters or search query.</p>
-                <button onClick={() => {setCategory("All"); setSearch(""); setSort("newest");}} className="text-blue-600 font-medium hover:underline">Clear all filters</button>
+                <button onClick={clearAll} className="text-blue-600 font-medium hover:underline">Clear all filters</button>
              </div>
            )}
         </div>
