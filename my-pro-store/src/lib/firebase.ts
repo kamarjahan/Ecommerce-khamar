@@ -18,7 +18,7 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 // Initialize Services
 const db = getFirestore(app);
 const storage = getStorage(app);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
+const auth = typeof window !== "undefined" ? getAuth(app) : (undefined as any);
+const provider = typeof window !== "undefined" ? new GoogleAuthProvider() : (undefined as any);
 
 export { app, db, storage, auth, provider };
