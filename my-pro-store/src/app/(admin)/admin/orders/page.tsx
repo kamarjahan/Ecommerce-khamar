@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/components/providers/AuthProvider";
@@ -13,11 +14,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useStore } from "@/lib/store";
 
  
 
 export default function OrdersPage() {
   const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const { addToCart } = useStore();
   const [orders, setOrders] = useState<any[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,6 +130,26 @@ export default function OrdersPage() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard");
+  };
+
+  const handleBuyAgain = (order: any) => {
+    order.items?.forEach((item: any) => {
+      addToCart({
+        id: item.productId || item.id,
+        name: item.name,
+        price: Number(item.price || 0),
+        image: item.image || "",
+        variant: item.variant || "",
+        quantity: Number(item.quantity || 1),
+        isCodAvailable: item.isCodAvailable !== false,
+      });
+    });
+    toast.success("Items added to cart");
+    router.push("/cart");
+  };
+
+  const handleViewOrder = (order: any) => {
+    setSelectedOrder(order);
   };
 
   if (authLoading || loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin h-8 w-8 text-gray-400" /></div>;
@@ -257,11 +281,11 @@ export default function OrdersPage() {
                   {/* Action Buttons */}
                   <div className="flex gap-3 w-full md:w-auto">
                     {order.status === 'delivered' ? (
-                       <button className="flex-1 md:flex-none border border-gray-200 px-4 py-2 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition">
+                       <button onClick={(e) => { e.stopPropagation(); handleBuyAgain(order); }} className="flex-1 md:flex-none border border-gray-200 px-4 py-2 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition">
                           Buy Again
                        </button>
                     ) : (
-                       <button className="flex-1 md:flex-none border border-gray-200 px-4 py-2 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition">
+                       <button onClick={(e) => { e.stopPropagation(); handleViewOrder(order); }} className="flex-1 md:flex-none border border-gray-200 px-4 py-2 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition">
                           View Order
                        </button>
                     )}

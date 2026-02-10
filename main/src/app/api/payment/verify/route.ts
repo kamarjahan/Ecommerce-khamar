@@ -1,45 +1,43 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/firebase"; // Use Client SDK
-import { collection, addDoc } from "firebase/firestore";
-
-
+import { adminDb, admin } from "@/lib/firebase-admin";
+import { requireUser } from "@/lib/server-auth";
 
 export async function POST(req: Request) {
   try {
-    const { 
-      razorpay_order_id, 
-      razorpay_payment_id, 
-      razorpay_signature,
-      cartItems,
-      userId,
-      couponCode, 
-      discountAmount
-    } = await req.json();
+    if (!adminDb) {
+      return NextResponse.json({ error: "Server is not configured" }, { status: 500 });
+    }
+    const decoded = await requireUser(req);
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = await req.json();
 
-    // 1. Verify Signature using Web Crypto API (Edge Compatible)
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
+    }
+
+    const intentRef = adminDb!.collection("order_intents").doc(razorpay_order_id);
+    const intentSnap = await intentRef.get();
+
+    if (!intentSnap.exists) {
+      return NextResponse.json({ error: "Order intent not found" }, { status: 404 });
+    }
+
+    const intent = intentSnap.data() as any;
+
+    if (intent.uid !== decoded.uid) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const body = `${razorpay_order_id}|${razorpay_payment_id}`;
     const secret = process.env.RAZORPAY_KEY_SECRET;
-
     if (!secret) {
-      throw new Error("Razorpay Secret is missing");
+      return NextResponse.json({ error: "Razorpay Secret is missing" }, { status: 500 });
     }
 
     const enc = new TextEncoder();
     const algorithm = { name: "HMAC", hash: "SHA-256" };
 
-    const key = await crypto.subtle.importKey(
-      "raw", 
-      enc.encode(secret), 
-      algorithm, 
-      false, 
-      ["sign", "verify"]
-    );
-
-    const signature = await crypto.subtle.sign(
-      algorithm.name, 
-      key, 
-      enc.encode(body)
-    );
+    const key = await crypto.subtle.importKey("raw", enc.encode(secret), algorithm, false, ["sign", "verify"]);
+    const signature = await crypto.subtle.sign(algorithm.name, key, enc.encode(body));
 
     const expectedSignature = Array.from(new Uint8Array(signature))
       .map((b) => b.toString(16).padStart(2, "0"))
@@ -49,22 +47,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid Signature" }, { status: 400 });
     }
 
-    // 2. Calculate Order Totals
-    const subtotal = cartItems.reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
-    const shipping = subtotal > 999 ? 0 : 50;
-    const totalPaid = subtotal + shipping - (discountAmount || 0);
-
-    // 3. Save Order to Firestore (Using Client SDK)
     const orderData = {
-      userId,
-      items: cartItems,
-      amount: {
-        subtotal,
-        shipping,
-        discount: discountAmount || 0,
-        total: totalPaid
-      },
-      couponApplied: couponCode || null,
+      userId: decoded.uid,
+      items: intent.items,
+      amount: intent.amount,
+      couponApplied: intent.couponApplied || null,
       status: "placed",
       payment: {
         method: "razorpay",
@@ -72,18 +59,13 @@ export async function POST(req: Request) {
         orderId: razorpay_order_id,
         isPaid: true,
       },
-      createdAt: new Date().toISOString(), // Storing as ISO String for consistency
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
-    const ordersRef = collection(db, "orders");
-    const docRef = await addDoc(ordersRef, orderData);
+    const docRef = await adminDb!.collection("orders").add(orderData);
+    await intentRef.update({ status: "completed", completedAt: new Date().toISOString(), orderDocId: docRef.id });
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Order Placed",
-      orderId: docRef.id 
-    });
-
+    return NextResponse.json({ success: true, message: "Order Placed", orderId: docRef.id });
   } catch (error) {
     console.error("Payment Verification Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

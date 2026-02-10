@@ -39,25 +39,34 @@ const ICON_MAP: Record<string, any> = {
 
 // --- DATA FETCHING ---
 async function getSettings(): Promise<StoreSettings> {
+  const defaults: StoreSettings = {
+    storeName: "My Store",
+    maintenanceMode: false,
+    showAnnouncement: false,
+    announcement: "",
+    hero: {
+      title: "Welcome",
+      subtitle: "Best products",
+      buttonText: "Shop",
+      buttonLink: "/products",
+      image: "",
+      alignment: "left",
+      overlayOpacity: 40,
+    },
+    perks: [],
+    offers: [],
+  };
+
   try {
     const ref = doc(db, "settings", "layout");
     const snap = await getDoc(ref);
     // Return with defaults to prevent crashes
     return {
-      storeName: "My Store",
-      maintenanceMode: false,
-      showAnnouncement: false,
-      announcement: "",
-      hero: {
-        title: "Welcome", subtitle: "Best products", buttonText: "Shop", buttonLink: "/products", 
-        image: "", alignment: "left", overlayOpacity: 40
-      },
-      perks: [],
-      offers: [],
+      ...defaults,
       ...snap.data()
     } as StoreSettings;
   } catch (e) {
-    return {} as StoreSettings; // Fallback
+    return defaults; // Fallback
   }
 }
 

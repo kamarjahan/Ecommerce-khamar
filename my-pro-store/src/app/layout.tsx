@@ -1,10 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { Toaster } from "sonner";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Rah By Rabanda",
@@ -18,7 +15,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased font-sans text-gray-900 bg-white`}>
+      <body className="antialiased font-sans text-gray-900 bg-white">
         <AuthProvider>
           {/* Navbar and Footer are REMOVED from here to avoid showing on Admin pages */}
           {children}

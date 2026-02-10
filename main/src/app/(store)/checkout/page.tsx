@@ -177,9 +177,19 @@ export default function CheckoutPage() {
       }
 
       // 2. Razorpay Flow
+      const idToken = await user?.getIdToken();
+      if (!idToken) throw new Error("Please login again");
+
       const res = await fetch("/api/checkout", {
         method: "POST",
-        body: JSON.stringify({ cartItems: cart, couponCode: appliedCoupon?.code }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({
+          cartItems: cart.map((item) => ({ id: item.id, quantity: item.quantity, variant: item.variant || "" })),
+          couponCode: appliedCoupon?.code
+        }),
       });
       const data = await res.json();
 
@@ -195,12 +205,12 @@ export default function CheckoutPage() {
         handler: async function (response: any) {
           const verifyRes = await fetch("/api/payment/verify", {
             method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${idToken}`,
+            },
             body: JSON.stringify({
-              ...response,
-              cartItems: cart,
-              userId: user?.uid,
-              couponCode: appliedCoupon?.code,
-              discountAmount: discount
+              ...response
             }),
           });
           
