@@ -9,11 +9,7 @@ import { useAuth } from "@/components/providers/AuthProvider";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
-
-// 🔒 SUPER ADMIN EMAIL (Master Key) - Case Insensitive
-const SUPER_ADMIN_EMAIL = "ztenkammu@gmail.com";
+import { auth } from "@/lib/firebase";
 
 // --- PERMISSION MAPPING ---
 const MENU_ITEMS = [
@@ -57,33 +53,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return;
       }
 
-      const userEmail = user.email?.toLowerCase() || "";
-      const adminEmail = SUPER_ADMIN_EMAIL.toLowerCase();
-
-      // 3. Super Admin Bypass
-      if (userEmail === adminEmail) {
-        setIsAuthorized(true);
-        setUserPermissions(MENU_ITEMS.map(i => i.permission));
-        setCheckingPermission(false);
-        return;
-      }
-
-      // 4. Check 'admin_users' collection
+      // 3. Server-side permission check
       try {
-        const q = query(collection(db, "admin_users"), where("email", "==", userEmail));
-        const querySnapshot = await getDocs(q);
+        const idToken = await user.getIdToken();
+        const res = await fetch("/api/admin/access", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        });
 
-        if (!querySnapshot.empty) {
-          const userData = querySnapshot.docs[0].data();
-          const perms = userData.role === 'admin' 
-            ? MENU_ITEMS.map(i => i.permission) 
-            : (userData.permissions || []);
-            
-          setUserPermissions(perms);
+        const data = await res.json();
+
+        if (res.ok && data.authorized) {
+          setUserPermissions(data.permissions || []);
           setIsAuthorized(true);
         } else {
-          console.warn("⛔ User not found in admin_users collection");
-          setErrorMsg("You are not listed in the Team database.");
+          setErrorMsg("You are not authorized to access admin.");
         }
       } catch (error: any) {
         console.error("🔥 Error checking permissions:", error);

@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, deleteDoc, doc, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { Search, Trash2, Shield, User as UserIcon, Mail, Filter } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
+import { useAuth } from "@/components/providers/AuthProvider";
 
  
 
 export default function AdminCustomersPage() {
+  const { user } = useAuth();
   const [users, setUsers] = useState<any[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,14 +62,26 @@ export default function AdminCustomersPage() {
 
   // 3. Delete User Action
   const handleDeleteUser = async (uid: string) => {
-    if (!confirm("Are you sure? This only removes them from this list, not from Auth.")) return;
-    
+    if (!confirm("Are you sure? This will remove the user from Auth and Firestore.")) return;
+
     try {
-      await deleteDoc(doc(db, "users", uid));
+      const idToken = await user?.getIdToken();
+      if (!idToken) throw new Error("Missing admin token");
+
+      const res = await fetch(`/api/admin/users/${uid}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed API request");
+
       setUsers(users.filter(u => u.uid !== uid));
-      toast.success("User removed from database");
+      toast.success("User fully deprovisioned");
     } catch (error) {
-      toast.error("Failed to remove user");
+      console.error(error);
+      toast.error("Failed to deprovision user");
     }
   };
 
