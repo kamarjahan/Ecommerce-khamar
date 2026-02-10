@@ -4,7 +4,7 @@ import { useState } from "react";
 import { auth, provider, db } from "@/lib/firebase";
 import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, Mail, Lock, User, ArrowRight, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -13,6 +13,15 @@ import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const getRedirectPath = () => {
+    const redirect = searchParams.get("redirect");
+    if (redirect && redirect.startsWith("/") && !redirect.startsWith("//")) {
+      return redirect;
+    }
+    return "/profile";
+  };
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false); // Toggle between Login/Signup
 
@@ -47,7 +56,7 @@ export default function LoginPage() {
       }
 
       toast.success(`Welcome back, ${user.displayName}!`);
-      router.push("/profile");
+      router.push(getRedirectPath());
     } catch (error: any) {
       console.error(error);
       toast.error(error.message);
@@ -96,7 +105,7 @@ export default function LoginPage() {
         toast.success("Logged in successfully");
       }
 
-      router.push("/profile");
+      router.push(getRedirectPath());
     } catch (error: any) {
       // Friendly Error Messages
       let msg = "Authentication failed";
