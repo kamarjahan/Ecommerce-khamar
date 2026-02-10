@@ -65,7 +65,7 @@ export default function Navbar() {
           
           {/* 1. Logo */}
           <Link href="/" onClick={closeMenus} className="flex-shrink-0 font-bold text-2xl text-gray-900 tracking-tight">
-            rah<span className="text-blue-600"> by rabanda</span>
+            Khamar<span className="text-blue-600"> MarketPlace</span>
           </Link>
 
           {/* 2. Desktop Search Bar (Hidden on Mobile) */}
